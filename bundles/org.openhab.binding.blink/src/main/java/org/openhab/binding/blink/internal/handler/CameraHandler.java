@@ -252,7 +252,7 @@ public class CameraHandler extends BaseThingHandler implements EventListener {
             if (mediaEvent.isCamera(config)) {
                 logger.debug("Triggering motion event for camera {}", config.cameraId);
                 logger.debug("Thumbnail from the motion event is at; {}", mediaEvent.thumbnail);
-                triggerChannel(CHANNEL_CAMERA_MOTIONDETECTION);
+                triggerChannel(CHANNEL_CAMERA_MOTIONTRIGGERED);
             } else {
                 logger.debug("Media event for a non-camera? event: {}", mediaEvent);
             }
