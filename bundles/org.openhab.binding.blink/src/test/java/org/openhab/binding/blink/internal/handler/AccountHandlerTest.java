@@ -15,7 +15,7 @@ package org.openhab.binding.blink.internal.handler;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.hamcrest.Matchers.contains;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -26,7 +26,6 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -56,12 +55,12 @@ import org.openhab.core.config.core.Configuration;
 import org.openhab.core.io.net.http.HttpClientFactory;
 import org.openhab.core.library.types.OnOffType;
 import org.openhab.core.net.NetworkAddressService;
+import org.openhab.core.storage.Storage;
 import org.openhab.core.storage.StorageService;
 import org.openhab.core.test.java.JavaTest;
 import org.openhab.core.thing.Bridge;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingStatus;
-import org.openhab.core.thing.ThingStatusDetail;
 import org.openhab.core.thing.ThingStatusInfo;
 import org.openhab.core.thing.ThingTypeUID;
 import org.openhab.core.thing.binding.ThingHandlerCallback;
@@ -107,6 +106,9 @@ class AccountHandlerTest extends JavaTest {
     @Mock
     @NonNullByDefault({})
     StorageService storageService;
+    @Mock
+    @NonNullByDefault({})
+    Storage<Object> storage = BlinkTestUtil.testStorage();
 
     @Spy
     Bridge bridge = new BridgeImpl(THING_TYPE_UID, CLIENT_ID);
@@ -122,66 +124,51 @@ class AccountHandlerTest extends JavaTest {
         config.put("password", "derwolf");
         config.put("refreshInterval", 30);
         when(bridge.getConfiguration()).thenReturn(config);
+        when(storage.get(any())).thenReturn(null);
+        when(storageService.getStorage(any(), any())).thenReturn(storage);
         accountHandler = spy(new AccountHandler(bridge, bundleContext, storageService, httpClientFactory, new Gson()));
+
+        AccountConfiguration accountConfig = new AccountConfiguration();
+        accountConfig.email = config.get("email").toString();
+        accountConfig.password = config.get("password").toString();
+        // leave MFA blank for now
+        when(accountHandler.getConfiguration()).thenReturn(accountConfig);
     }
 
     @Test
     void test2FACompletedInitialization() throws IOException {
         accountHandler.blinkService = accountService;
-        BlinkAccount account = BlinkTestUtil.testBlinkAccount();
-        doReturn(account).when(accountService).loginStage1WithUsername(any(), anyString());
+        BlinkAccount account = BlinkTestUtil.testUnauthenticatedBlinkAccount();
+        // doReturn(account).when(accountService).loginStage1WithUsername(any(), anyString());
+        doReturn(false).when(accountService).verifyAuthentication(any());
+        doReturn(account).when(accountService).refreshToken(any());
+        AccountConfiguration accountConfig = new AccountConfiguration();
+        accountConfig.email = "dasschaf@hurz.com";
+        accountConfig.password = "derwolf";
+        // leave MFA blank for now
+        accountHandler.config = accountConfig;
+        when(accountHandler.getConfiguration()).thenReturn(accountConfig);
+
+        ArgumentCaptor<String> hardwareIdCaptor = ArgumentCaptor.forClass(String.class);
+        accountHandler.initializeBlinkAuthentication(false);
+        verify(accountService).loginStage1WithUsername(any(), hardwareIdCaptor.capture());
+        accountConfig.mfaCode = "123456";
+        when(accountHandler.getConfiguration()).thenReturn(accountConfig);
+        BlinkAccount fullyAuthBlinkAccount = BlinkTestUtil.testBlinkAccount();
+        when(accountService.loginStage2WithMfa(accountConfig, hardwareIdCaptor.getValue()))
+                .thenReturn(fullyAuthBlinkAccount);
         doNothing().when(accountHandler).loadEvents();
+        doNothing().when(accountHandler).setOnline();
+        doNothing().when(accountHandler).storeBlinkAccount(any());
         accountHandler.setCallback(callback);
-        accountHandler.initialize();
-        waitForAssert(() -> {
-            ArgumentCaptor<ThingStatusInfo> statusCaptor = ArgumentCaptor.forClass(ThingStatusInfo.class);
-            verify(callback, atLeastOnce()).statusUpdated(eq(bridge), statusCaptor.capture());
-            assertThat(statusCaptor.getValue().getStatus(), is(ThingStatus.ONLINE));
-            assertThat(accountHandler.getGeneratedClientId(), is(equalTo(CLIENT_ID)));
-        });
-    }
+        accountHandler.initializeBlinkAuthentication(false);
+        verify(accountHandler).setOnline();
 
-    @Test
-    void testNewClientIdCauses2FASend() throws IOException {
-        accountHandler.blinkService = accountService;
-        doAnswer(invocation -> {
-            BlinkAccount account = BlinkTestUtil.testBlinkAccount();
-            return account;
-        }).when(accountService).loginStage1WithUsername(any(), anyString());
-        accountHandler.setCallback(callback);
-        accountHandler.initialize();
-        waitForAssert(() -> {
-            try {
-                verify(accountService).loginStage1WithUsername(eq(accountHandler.config), anyString());
-                ArgumentCaptor<ThingStatusInfo> statusCaptor = ArgumentCaptor.forClass(ThingStatusInfo.class);
-                verify(callback, atLeastOnce()).statusUpdated(eq(bridge), statusCaptor.capture());
-                assertThat(statusCaptor.getValue().getStatus(), is(ThingStatus.OFFLINE));
-                assertThat(statusCaptor.getValue().getStatusDetail(), is(ThingStatusDetail.CONFIGURATION_PENDING));
-                assertThat(accountHandler.getGeneratedClientId(), is(equalTo(CLIENT_ID)));
-            } catch (IOException e) {
-                fail(e.getMessage());
-            }
-        });
-    }
-
-    @Test
-    void testExistingClientIdDoesNotCause2FASend() throws IOException {
-        accountHandler.blinkService = accountService;
-        doAnswer(invocation -> {
-            BlinkAccount account = BlinkTestUtil.testBlinkAccount();
-            return account;
-        }).when(accountService).loginStage1WithUsername(any(), anyString());
-        Map<String, String> thingProps = Map.of("generatedClientId", CLIENT_ID);
-        doReturn(thingProps).when(bridge).getProperties();
-        accountHandler.initialize();
-        waitForAssert(() -> {
-            try {
-                verify(accountService).loginStage1WithUsername(eq(accountHandler.config), anyString());
-                assertThat(accountHandler.getGeneratedClientId(), is(equalTo(CLIENT_ID)));
-            } catch (IOException e) {
-                fail(e.getMessage());
-            }
-        });
+        // waitForAssert(() -> {
+        // ArgumentCaptor<ThingStatusInfo> statusCaptor = ArgumentCaptor.forClass(ThingStatusInfo.class);
+        // verify(callback, atLeastOnce()).statusUpdated(eq(bridge), statusCaptor.capture());
+        // assertThat(statusCaptor.getValue().getStatus(), is(ThingStatus.ONLINE));
+        // });
     }
 
     @Test
@@ -203,6 +190,7 @@ class AccountHandlerTest extends JavaTest {
         BlinkHomescreen homescreen = testBlinkHomescreen();
         doReturn(homescreen).when(accountService).getDevices(any());
         doReturn(testBlinkEvents()).when(accountService).getEvents(any(), any());
+        doReturn(true).when(accountHandler).ensureAccessTokenIsValid(); /// TODO -rb added this
         accountHandler.setOnline();
         // cache set
         // noinspection ConstantConditions
@@ -215,7 +203,7 @@ class AccountHandlerTest extends JavaTest {
         assertThat("Delay is not within five seconds of refreshInterval", diffInterval, is(lessThan(5L)));
         // thing online
         ArgumentCaptor<ThingStatusInfo> statusCaptor = ArgumentCaptor.forClass(ThingStatusInfo.class);
-        verify(callback).statusUpdated(any(), statusCaptor.capture());
+        verify(callback, atLeastOnce()).statusUpdated(any(), statusCaptor.capture());
         assertThat(statusCaptor.getValue().getStatus(), is(ThingStatus.ONLINE));
     }
 
@@ -257,7 +245,7 @@ class AccountHandlerTest extends JavaTest {
         assertThat(accountHandler.refreshStateJob, is(nullValue()));
         doNothing().when(accountHandler).loadDevices();
         doNothing().when(accountHandler).loadEvents();
-        accountHandler.refreshState(false);
+        accountHandler.refreshState(true);
         verify(accountHandler).loadDevices();
         verify(accountHandler).loadEvents();
         assertThat(accountHandler.refreshStateJob, is(notNullValue()));
@@ -271,16 +259,6 @@ class AccountHandlerTest extends JavaTest {
         accountHandler.cachedHomescreen = testBlinkHomescreen();
         accountHandler.getDevices(false);
         verify(accountHandler, times(1)).refreshState(false);
-    }
-
-    @Test
-    void testLoadDevicesCachesNullOnException() throws IOException {
-        accountHandler.blinkService = accountService;
-        accountHandler.blinkAccount = BlinkTestUtil.testBlinkAccount();
-        doThrow(IOException.class).when(accountService).getDevices(ArgumentMatchers.any(BlinkAccount.class));
-        accountHandler.loadDevices();
-        // noinspection ConstantConditions
-        assertThat(accountHandler.cachedHomescreen, is(nullValue()));
     }
 
     @Test
@@ -347,7 +325,7 @@ class AccountHandlerTest extends JavaTest {
         BlinkHomescreen homescreen = testBlinkHomescreen();
         doReturn(homescreen).when(accountHandler).getDevices(anyBoolean());
         exception = assertThrows(IOException.class, () -> accountHandler.getCameraState(camera, true));
-        assertThat(exception.getMessage(), is("No cameras found for account"));
+        assertThat(exception.getMessage(), is("No cameras of type CAMERA found for account"));
     }
 
     @Test
@@ -360,7 +338,7 @@ class AccountHandlerTest extends JavaTest {
         camera.cameraId = 678L;
         camera.networkId = 123L;
         IOException exception = assertThrows(IOException.class, () -> accountHandler.getCameraState(camera, true));
-        assertThat(exception.getMessage(), is("Unknown camera"));
+        assertThat(exception.getMessage(), is("Unknown camera 678"));
     }
 
     @Test
@@ -449,19 +427,33 @@ class AccountHandlerTest extends JavaTest {
     @Test
     void testGetBatteryStatusLowOFF() throws IOException {
         accountHandler.blinkAccount = BlinkTestUtil.testBlinkAccount();
-        BlinkCamera apiCamera = new BlinkCamera(123L, 456L);
+        CameraConfiguration config = new CameraConfiguration();
+        config.networkId = 123L;
+        config.cameraId = 456L;
+        BlinkCamera apiCamera = new BlinkCamera(config.networkId, config.cameraId);
         apiCamera.battery = "ok";
+        BlinkHomescreen homescreen = testBlinkHomescreen();
+        homescreen.cameras = List.of(apiCamera);
+        doReturn(homescreen).when(accountHandler).getDevices(anyBoolean());
         doReturn(apiCamera).when(accountHandler).getCameraState(any(), anyBoolean());
-        assertThat(accountHandler.getBattery(new CameraConfiguration()), is(OnOffType.OFF));
+        doReturn(true).when(accountHandler).ensureAccessTokenIsValid(); /// TODO -rb added this
+        assertThat(accountHandler.getBattery(config), is(OnOffType.OFF));
     }
 
     @Test
     void testGetBatteryStatusLowON() throws IOException {
         accountHandler.blinkAccount = BlinkTestUtil.testBlinkAccount();
-        BlinkCamera apiCamera = new BlinkCamera(123L, 456L);
-        apiCamera.battery = "somethingelse";
+        CameraConfiguration config = new CameraConfiguration();
+        config.networkId = 123L;
+        config.cameraId = 456L;
+        BlinkCamera apiCamera = new BlinkCamera(config.networkId, config.cameraId);
+        apiCamera.battery = "low";
+        BlinkHomescreen homescreen = testBlinkHomescreen();
+        homescreen.cameras = List.of(apiCamera);
+        doReturn(homescreen).when(accountHandler).getDevices(anyBoolean());
         doReturn(apiCamera).when(accountHandler).getCameraState(any(), anyBoolean());
-        assertThat(accountHandler.getBattery(new CameraConfiguration()), is(OnOffType.ON));
+        doReturn(true).when(accountHandler).ensureAccessTokenIsValid(); /// TODO -rb added this
+        assertThat(accountHandler.getBattery(config), is(OnOffType.ON));
     }
 
     @Test

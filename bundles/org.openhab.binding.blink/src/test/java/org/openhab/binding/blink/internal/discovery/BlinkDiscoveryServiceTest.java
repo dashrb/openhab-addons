@@ -42,7 +42,7 @@ import org.openhab.core.thing.internal.BridgeImpl;
  * @author Matthias Oesterheld - Initial contribution
  * @author Robert T. Brown (-rb) - support Blink Authentication changes in 2025 (OAUTHv2)
  * @author Volker Bier - add support for Doorbells
- * 
+ *
  */
 @ExtendWith(MockitoExtension.class)
 @NonNullByDefault
@@ -84,6 +84,7 @@ class BlinkDiscoveryServiceTest {
     BlinkHomescreen testHomescreen() {
         BlinkHomescreen homescreen = new BlinkHomescreen();
         homescreen.cameras = new ArrayList<>();
+        homescreen.doorbells = new ArrayList<>();
         homescreen.networks = new ArrayList<>();
         homescreen.owls = new ArrayList<>();
         return homescreen;

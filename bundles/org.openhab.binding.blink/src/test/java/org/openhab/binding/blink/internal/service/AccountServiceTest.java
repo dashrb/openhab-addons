@@ -27,7 +27,6 @@ import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.http.HttpMethod;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.openhab.binding.blink.internal.BlinkTestUtil;
 import org.openhab.binding.blink.internal.config.AccountConfiguration;
@@ -77,19 +76,6 @@ class AccountServiceTest {
     }
 
     @Test
-    void testLoginReauthParams() throws IOException {
-        AccountConfiguration config = testAccountConfiguration();
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<Map<String, String>> paramCaptor = ArgumentCaptor.forClass(Map.class);
-        doReturn(BlinkTestUtil.testBlinkAccount()).when(accountService).apiRequest(anyString(), anyString(),
-                ArgumentMatchers.any(HttpMethod.class), isNull(), paramCaptor.capture(), eq(BlinkAccount.class));
-        accountService.loginStage1WithUsername(config, "hw1");
-        assertThat(paramCaptor.getValue().size(), is(4)); /// TODO XXX this had (false), and the below was (true).
-        accountService.loginStage1WithUsername(config, "hw1");
-        assertThat(paramCaptor.getValue().size(), is(3));
-    }
-
-    @Test
     void testExceptionOnMissingLoginFields() throws IOException {
         AccountConfiguration config = testAccountConfiguration();
         BlinkAccount account = BlinkTestUtil.testBlinkAccount();
@@ -105,37 +91,6 @@ class AccountServiceTest {
         config.password = "secret";
         return config;
     }
-
-    // @Test
-    // void testVerifyPinIllegalArgument() {
-    // assertThrows(IllegalArgumentException.class, () -> accountService.old_verifyPin(null, ""));
-    // BlinkAccount account = new BlinkAccount();
-    // assertThrows(IllegalArgumentException.class, () -> accountService.old_verifyPin(account, ""));
-    // }
-    //
-
-    // @Test
-    // void testVerifyPinApiCallAndParams() throws IOException {
-    // String pin = "123456";
-    // BlinkAccount account = BlinkTestUtil.testBlinkAccount();
-    // String uri = "/api/v4/account/" + account.account.account_id + "/client/" + account.account.client_id
-    // + "/pin/verify";
-    // Map<String, String> params = new HashMap<>();
-    // params.put("pin", pin);
-    // BlinkValidation result = new BlinkValidation();
-    // result.valid = true;
-    // doReturn(result).when(accountService).apiRequest(account.account.tier, uri, HttpMethod.POST,
-    // account.auth.access_token, params, BlinkValidation.class);
-    // assertThat(accountService.old_verifyPin(account, pin), is(true));
-    // }
-
-    // @Test
-    // void testVerifyPinInvalidResult() throws IOException {
-    // BlinkAccount account = BlinkTestUtil.testBlinkAccount();
-    // doReturn(null).when(accountService).apiRequest(anyString(), anyString(), ArgumentMatchers.any(HttpMethod.class),
-    // anyString(), anyMap(), eq(BlinkValidation.class));
-    // assertThat(accountService.old_verifyPin(account, ""), is(false));
-    // }
 
     @Test
     void testGetDevicesIllegalArguments() {

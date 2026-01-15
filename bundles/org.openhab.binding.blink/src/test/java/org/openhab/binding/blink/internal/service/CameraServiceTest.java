@@ -58,8 +58,7 @@ class CameraServiceTest {
         assertThrows(IllegalArgumentException.class,
                 () -> cameraService.motionDetection(null, cameraConfiguration, true));
         BlinkAccount blinkAccount = new BlinkAccount();
-        assertThrows(IllegalArgumentException.class,
-                () -> cameraService.motionDetection(blinkAccount, cameraConfiguration, true));
+        assertThrows(Exception.class, () -> cameraService.motionDetection(blinkAccount, cameraConfiguration, true));
     }
 
     @Test

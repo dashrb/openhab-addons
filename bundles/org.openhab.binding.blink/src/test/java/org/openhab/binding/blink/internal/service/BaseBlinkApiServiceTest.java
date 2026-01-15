@@ -118,7 +118,8 @@ class BaseBlinkApiServiceTest {
         doReturn(response).when(request).send();
         apiService.request("abc", "/api/v1/hurz", HttpMethod.GET, "mytoken", params, null);
         verify(request).header(HttpHeader.ACCEPT, "application/json; charset=UTF-8");
-        verify(request).header("token-auth", "mytoken");
+        verify(request).header("Authorization", "Bearer mytoken");
+        verify(request).agent("27.0ANDROID_28373244");
         verify(request, times(params.size())).param(anyString(), anyString());
         IntStream.range(1, 4).forEach(i -> verify(request).param("p" + i, "v" + i));
     }

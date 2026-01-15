@@ -12,10 +12,11 @@
  */
 package org.openhab.binding.blink.internal.handler;
 
-import static org.hamcrest.MatcherAssert.*;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.any;
 
 import java.io.IOException;
 import java.util.function.Consumer;
@@ -123,7 +124,7 @@ class NetworkHandlerTest {
         assertThat(networkHandler.config.networkId, is(NETWORK_ID));
         ArgumentCaptor<ThingStatusInfo> statusCaptor = ArgumentCaptor.forClass(ThingStatusInfo.class);
         verify(callback).statusUpdated(eq(thing), statusCaptor.capture());
-        assertThat(statusCaptor.getValue().getStatus(), is(ThingStatus.ONLINE));
+        assertThat(statusCaptor.getValue().getStatus(), is(ThingStatus.UNKNOWN));
     }
 
     @Test
@@ -133,7 +134,7 @@ class NetworkHandlerTest {
         networkHandler.handleCommand(testedChannel, RefreshType.REFRESH);
         ArgumentCaptor<State> stateCaptor = ArgumentCaptor.forClass(State.class);
         verify(callback).stateUpdated(eq(testedChannel), stateCaptor.capture());
-        verify(accountHandler).getNetworkArmed(eq(Long.toString(networkHandler.config.networkId)), eq(false));
+        verify(accountHandler).getNetworkArmed(eq("" + Long.toString(networkHandler.config.networkId)), eq(false));
         assertThat(stateCaptor.getValue(), is(OnOffType.ON));
     }
 
@@ -159,11 +160,15 @@ class NetworkHandlerTest {
     @Test
     void testSetOfflineOnException() throws IOException {
         networkHandler.initialize();
-        when(networkService.arm(any(BlinkAccount.class), anyString(), anyBoolean())).thenThrow(IOException.class);
+        BlinkAccount blinkAccount = BlinkTestUtil.testBlinkAccount();
+
+        when(networkService.arm(any(), anyString(), anyBoolean())).thenThrow(IOException.class);
         networkHandler.networkService = networkService;
         ChannelUID testedChannel = new ChannelUID(new ThingUID(THING_TYPE_UID, Long.toString(NETWORK_ID)), "armed");
         networkHandler.handleCommand(testedChannel, OnOffType.OFF);
-        verify(accountHandler).setOffline(any(IOException.class));
+        ArgumentCaptor<ThingStatusInfo> statusCaptor = ArgumentCaptor.forClass(ThingStatusInfo.class);
+        verify(callback, atLeastOnce()).statusUpdated(eq(thing), statusCaptor.capture());
+        assertThat(statusCaptor.getValue().getStatus(), is(ThingStatus.OFFLINE));
     }
 
     @Test
@@ -188,6 +193,8 @@ class NetworkHandlerTest {
         OnOffType networkState = OnOffType.ON;
         doThrow(IOException.class).when(accountHandler).getNetworkArmed(any(), anyBoolean());
         networkHandler.handleHomescreenUpdate();
-        verify(accountHandler).setOffline(any(IOException.class));
+        ArgumentCaptor<ThingStatusInfo> statusCaptor = ArgumentCaptor.forClass(ThingStatusInfo.class);
+        verify(callback, atLeastOnce()).statusUpdated(eq(thing), statusCaptor.capture());
+        assertThat(statusCaptor.getValue().getStatus(), is(ThingStatus.OFFLINE));
     }
 }

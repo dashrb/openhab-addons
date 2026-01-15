@@ -12,10 +12,11 @@
  */
 package org.openhab.binding.blink.internal.handler;
 
-import static org.hamcrest.MatcherAssert.*;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.any;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -138,7 +139,7 @@ public class CameraHandlerTest {
         assertThat(cameraHandler.config.cameraType, is(CameraConfiguration.CameraType.CAMERA));
         ArgumentCaptor<ThingStatusInfo> statusCaptor = ArgumentCaptor.forClass(ThingStatusInfo.class);
         verify(callback).statusUpdated(eq(thing), statusCaptor.capture());
-        assertThat(statusCaptor.getValue().getStatus(), is(ThingStatus.ONLINE));
+        assertThat(statusCaptor.getValue().getStatus(), is(ThingStatus.UNKNOWN));
     }
 
     @Test
@@ -146,7 +147,9 @@ public class CameraHandlerTest {
         cameraHandler.accountHandler = accountHandler;
         doThrow(IOException.class).when(accountHandler).getTemperature(any());
         cameraHandler.handleCommand(CHANNEL_CAMERA_TEMPERATURE, RefreshType.REFRESH);
-        verify(accountHandler).setOffline(any(IOException.class));
+        ArgumentCaptor<ThingStatusInfo> statusCaptor = ArgumentCaptor.forClass(ThingStatusInfo.class);
+        verify(callback, atLeastOnce()).statusUpdated(eq(thing), statusCaptor.capture());
+        assertThat(statusCaptor.getValue().getStatus(), is(ThingStatus.OFFLINE));
         assertThat(cameraHandler.lastThumbnailPath, is(emptyString()));
     }
 
@@ -229,8 +232,8 @@ public class CameraHandlerTest {
         ArgumentCaptor<Consumer<Boolean>> handlerCaptor = ArgumentCaptor.forClass(Consumer.class);
         verify(cameraService).watchCommandStatus(any(), same(blinkAccount), any(), any(), handlerCaptor.capture());
         handlerCaptor.getValue().accept(true);
-        verify(callback).stateUpdated(eq(CHANNEL_CAMERA_SETTHUMBNAIL), eq(OnOffType.OFF));
-        verify(accountHandler).getDevices(true);
+        verify(callback, atLeastOnce()).stateUpdated(eq(CHANNEL_CAMERA_SETTHUMBNAIL), eq(OnOffType.OFF));
+        verify(accountHandler, atLeastOnce()).getDevices(true);
     }
 
     @Test
@@ -294,7 +297,10 @@ public class CameraHandlerTest {
         cameraHandler.cameraService = cameraService;
         doThrow(IOException.class).when(accountHandler).getTemperature(any());
         cameraHandler.handleHomescreenUpdate();
-        verify(accountHandler).setOffline(any(IOException.class));
+        ArgumentCaptor<ThingStatusInfo> statusCaptor = ArgumentCaptor.forClass(ThingStatusInfo.class);
+        verify(callback, atLeastOnce()).statusUpdated(eq(thing), statusCaptor.capture());
+        assertThat(statusCaptor.getValue().getStatus(), is(ThingStatus.OFFLINE));
+
         assertThat(cameraHandler.lastThumbnailPath, is(emptyString()));
     }
 }

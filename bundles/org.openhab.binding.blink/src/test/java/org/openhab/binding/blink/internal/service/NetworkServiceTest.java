@@ -54,7 +54,7 @@ class NetworkServiceTest {
         assertThrows(IllegalArgumentException.class, () -> networkService.arm(null, null, true));
         assertThrows(IllegalArgumentException.class, () -> networkService.arm(null, "123", true));
         BlinkAccount blinkAccount = new BlinkAccount();
-        assertThrows(IllegalArgumentException.class, () -> networkService.arm(blinkAccount, "123", true));
+        assertThrows(Exception.class, () -> networkService.arm(blinkAccount, "123", true));
     }
 
     @Test

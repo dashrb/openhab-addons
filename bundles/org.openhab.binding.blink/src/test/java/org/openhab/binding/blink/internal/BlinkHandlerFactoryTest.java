@@ -37,6 +37,7 @@ import org.openhab.core.storage.StorageService;
 import org.openhab.core.thing.Bridge;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingTypeUID;
+import org.openhab.core.thing.ThingUID;
 import org.openhab.core.thing.binding.ThingHandler;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.http.HttpService;
@@ -110,6 +111,7 @@ class BlinkHandlerFactoryTest {
     void createHandler_account() {
         setupMocks();
         when(bridge.getThingTypeUID()).thenReturn(new ThingTypeUID(BINDING_NAME, ACCOUNT));
+        when(bridge.getUID()).thenReturn(new ThingUID("1234", "5678", "999"));
         ThingHandler handler = factory.createHandler(bridge);
         assertThat(handler, is(notNullValue()));
         assertThat(handler.getClass(), is(AccountHandler.class));
