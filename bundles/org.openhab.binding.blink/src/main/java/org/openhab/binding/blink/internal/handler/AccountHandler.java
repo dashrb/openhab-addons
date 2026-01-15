@@ -279,6 +279,7 @@ public class AccountHandler extends BaseBridgeHandler {
         if (blinkAccount == null) {
             // no account in memory, and no account in JSON (maybe we just upgraded from openhab v4.1?)
             // in any case, we can't resume a session, so return false to initiate the complete login flow.
+            logger.debug("Unable to resumeSessionFromTokens: no account in memory, and none in JSON. Need fresh login");
             return false;
         }
         // at this point, we have a populated BlinkAccount, either from memory, or from Storage. Try it!
