@@ -160,8 +160,6 @@ class NetworkHandlerTest {
     @Test
     void testSetOfflineOnException() throws IOException {
         networkHandler.initialize();
-        BlinkAccount blinkAccount = BlinkTestUtil.testBlinkAccount();
-
         when(networkService.arm(any(), anyString(), anyBoolean())).thenThrow(IOException.class);
         networkHandler.networkService = networkService;
         ChannelUID testedChannel = new ChannelUID(new ThingUID(THING_TYPE_UID, Long.toString(NETWORK_ID)), "armed");
@@ -190,7 +188,6 @@ class NetworkHandlerTest {
     @Test
     void testHandleHomescreenUpdateOnException() throws IOException {
         networkHandler.initialize();
-        OnOffType networkState = OnOffType.ON;
         doThrow(IOException.class).when(accountHandler).getNetworkArmed(any(), anyBoolean());
         networkHandler.handleHomescreenUpdate();
         ArgumentCaptor<ThingStatusInfo> statusCaptor = ArgumentCaptor.forClass(ThingStatusInfo.class);

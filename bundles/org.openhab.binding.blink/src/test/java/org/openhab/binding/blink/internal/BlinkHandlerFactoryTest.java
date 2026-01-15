@@ -107,6 +107,7 @@ class BlinkHandlerFactoryTest {
 
     private @Mock @NonNullByDefault({}) Bridge bridge;
 
+    @SuppressWarnings("null")
     @Test
     void createHandler_account() {
         setupMocks();
@@ -118,6 +119,7 @@ class BlinkHandlerFactoryTest {
         // could test assignment of field values of handler here
     }
 
+    @SuppressWarnings("null")
     @Test
     void createHandler_camera() {
         setupMocks();
@@ -128,6 +130,7 @@ class BlinkHandlerFactoryTest {
         // could test assignment of field values of handler here
     }
 
+    @SuppressWarnings("null")
     @Test
     void createHandler_network() {
         setupMocks();

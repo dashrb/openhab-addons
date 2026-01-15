@@ -106,6 +106,7 @@ class AccountHandlerTest extends JavaTest {
     @Mock
     @NonNullByDefault({})
     StorageService storageService;
+    @SuppressWarnings("null")
     @Mock
     @NonNullByDefault({})
     Storage<Object> storage = BlinkTestUtil.testStorage();
@@ -198,6 +199,7 @@ class AccountHandlerTest extends JavaTest {
         // jobs created
         assertThat(accountHandler.refreshStateJob, is(notNullValue()));
         // cache expiry
+        @SuppressWarnings("null")
         long diffInterval = accountHandler.config.refreshInterval
                 - accountHandler.refreshStateJob.getDelay(TimeUnit.SECONDS);
         assertThat("Delay is not within five seconds of refreshInterval", diffInterval, is(lessThan(5L)));

@@ -65,7 +65,6 @@ import com.google.gson.Gson;
  *
  * @author Matthias Oesterheld - Initial contribution
  */
-@SuppressWarnings("ConstantConditions")
 @ExtendWith(MockitoExtension.class)
 @NonNullByDefault
 public class CameraHandlerTest {
@@ -121,7 +120,6 @@ public class CameraHandlerTest {
         doReturn(accountHandler).when(account).getHandler();
         cameraHandler = spy(
                 new CameraHandler(thing, httpService, networkAddressService, httpClientFactory, new Gson()) {
-                    @SuppressWarnings("ConstantConditions")
                     @Override
                     protected @Nullable Bridge getBridge() {
                         return account;
