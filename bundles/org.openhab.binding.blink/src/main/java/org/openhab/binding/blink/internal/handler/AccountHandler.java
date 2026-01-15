@@ -81,7 +81,6 @@ public class AccountHandler extends BaseBridgeHandler {
     AccountConfiguration config;
     AccountService blinkService;
     Storage<String> storage;
-    private String generatedClientId = "";
     @Nullable
     BlinkAccount blinkAccount;
     @Nullable
@@ -117,7 +116,6 @@ public class AccountHandler extends BaseBridgeHandler {
         return Collections.singleton(BlinkDiscoveryService.class);
     }
 
-    @SuppressWarnings("null")
     @Override
     public void initialize() {
         // logger.warn("WARNING: This is a pre-release version of the Blink Binding, 2026-01-08");
@@ -141,88 +139,94 @@ public class AccountHandler extends BaseBridgeHandler {
         updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_PENDING, explanation);
 
         scheduler.execute(() -> {
+            initializeBlinkAuthentication(userEmailUpdated);
+        });
+    }
 
-            // get (or generate for new bridges) the blink hardware id.
-            // hardwareId is stored in Storage, but also in Properties in case Storage is lost.
-            Map<String, String> properties = editProperties();
-            String hardwareId = properties.get(PROPERTY_HARDWARE_ID);
-            if (!userEmailUpdated) {
-                // must not resume via tokens if user modifies their email address (blink account)
-                boolean fullyAuthenticated = resumeSessionFromTokens();
-                if (fullyAuthenticated) {
-                    return;
-                }
+    void initializeBlinkAuthentication(final boolean userEmailUpdated) {
+        // get (or generate for new bridges) the blink hardware id.
+        // hardwareId is stored in Storage, but also in Properties in case Storage is lost.
+        Map<String, String> properties = editProperties();
+        String hardwareId = properties.get(PROPERTY_HARDWARE_ID);
+        if (!userEmailUpdated) {
+            // must not resume via tokens if user modifies their email address (blink account)
+            boolean fullyAuthenticated = resumeSessionFromTokens();
+            if (fullyAuthenticated) {
+                return;
             }
-            // If the hardwareId from Storage is different from the one in Properties, use Storage.
-            // Why? because it's tied to the tokens. However, Storage isn't saved until a successful
-            // login, including MFA. Until that time, we need to retain the HardwareId. Also, if the
-            // user creates a new blink Account but wants to copy the Storage to the new account
-            // (e.g. migration to a new machine?), then honor the one from Storage.
-            if (blinkAccount != null && !blinkAccount.account.hardware_id.equals(hardwareId)) {
-                hardwareId = blinkAccount.account.hardware_id;
+        }
+        // If the hardwareId from Storage is different from the one in Properties, use Storage.
+        // Why? because it's tied to the tokens. However, Storage isn't saved until a successful
+        // login, including MFA. Until that time, we need to retain the HardwareId. Also, if the
+        // user creates a new blink Account but wants to copy the Storage to the new account
+        // (e.g. migration to a new machine?), then honor the one from Storage.
+        BlinkAccount localAccount = blinkAccount;
+        if (localAccount != null) {
+            if (!localAccount.account.hardware_id.equals(hardwareId)) {
+                hardwareId = localAccount.account.hardware_id;
                 updateProperty(PROPERTY_HARDWARE_ID, hardwareId);
             }
-            // remove old Properties used by openhab blink binding v4.1.
-            // need to call updateProperty() one at a time in order to erase them.
-            updateProperty("lastTokenRefresh", null);
-            updateProperty("clientId", null);
-            updateProperty("token", null);
-            updateProperty("generatedClientId", null);
-            updateProperty("validationUrl", null);
+        }
+        // remove old Properties used by openhab blink binding v4.1.
+        // need to call updateProperty() one at a time in order to erase them.
+        updateProperty("lastTokenRefresh", null);
+        updateProperty("clientId", null);
+        updateProperty("token", null);
+        updateProperty("generatedClientId", null);
+        updateProperty("validationUrl", null);
 
-            // unable to find or use any previous authentication tokens.
-            // Determine if we are at stage 1 (ready to send user/pass) or stage 2 (user typed in the MFA code)
-            boolean needLoginStage1 = false;
-            if ((config.mfaCode == null) || config.mfaCode.isBlank() || (hardwareId == null) || hardwareId.isBlank()) {
-                needLoginStage1 = true;
-                logger.trace("Initial Login required to initialize OAUTH parameters. Existing parameters:");
-                logger.trace("  MFA Code = {}", config.mfaCode);
-                logger.trace("  Hardware Id = {}", hardwareId);
-                // The hardware_id needs to stay consistent across OAUTH flow.
-                // Hopefully we loaded one from Storage from a previous successful authentication.
-                // If not, hopefully we retrieved it from Properties, from a previous (failed) authentication.
-                // If not, we need to make a fresh one, save it in Properties, use it in authentication, and
-                // ultimately save it in Storage after successful authentication.
-                if ((hardwareId == null) || (hardwareId.isBlank())) {
-                    hardwareId = UUID.randomUUID().toString().toUpperCase();
-                    updateProperty(PROPERTY_HARDWARE_ID, hardwareId);
-                }
+        // unable to find or use any previous authentication tokens.
+        // Determine if we are at stage 1 (ready to send user/pass) or stage 2 (user typed in the MFA code)
+        boolean needLoginStage1 = false;
+        if ((config.mfaCode == null) || config.mfaCode.isBlank() || (hardwareId == null) || hardwareId.isBlank()) {
+            needLoginStage1 = true;
+            logger.trace("Initial Login required to initialize OAUTH parameters. Existing parameters:");
+            logger.trace("  MFA Code = {}", config.mfaCode);
+            logger.trace("  Hardware Id = {}", hardwareId);
+            // The hardware_id needs to stay consistent across OAUTH flow.
+            // Hopefully we loaded one from Storage from a previous successful authentication.
+            // If not, hopefully we retrieved it from Properties, from a previous (failed) authentication.
+            // If not, we need to make a fresh one, save it in Properties, use it in authentication, and
+            // ultimately save it in Storage after successful authentication.
+            if ((hardwareId == null) || (hardwareId.isBlank())) {
+                hardwareId = UUID.randomUUID().toString().toUpperCase();
+                updateProperty(PROPERTY_HARDWARE_ID, hardwareId);
             }
-            String potentialCause = "username and password";
-            try {
-                if (needLoginStage1) {
-                    logger.debug("Logging into Blink Servers using OAUTH. Our hardware id is {}", hardwareId);
-                    blinkService.loginStage1WithUsername(config, hardwareId);
-                    logger.debug("Successfully sent username & password. Now waiting for MFA Code");
-                    updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_PENDING,
-                            "Waiting for MFA Code. Enter the MFA Code you received via SMS or email, then Save");
-                } else {
-                    logger.debug("Submitting MFA Code to Blink Servers to complete authentication process");
-                    potentialCause = "MFA code";
-                    blinkAccount = blinkService.loginStage2WithMfa(config, hardwareId);
-                    Configuration updatedConfig = editConfiguration();
-                    updatedConfig.put("mfaCode", ""); // MFA can only be used one time, and we did, so clear it now
-                    updateConfiguration(updatedConfig);
-                    setOnline();
-                    storeBlinkAccount(blinkAccount);
-                }
-            } catch (Exception e) {
-                logger.error("Error connecting to Blink servers with given credentials. Check {}", potentialCause, e);
-                // After a failure, discard the MFA code so as to start the process over again
+        }
+        String potentialCause = "username and password";
+        try {
+            if (needLoginStage1) {
+                logger.debug("Logging into Blink Servers using OAUTH. Our hardware id is {}", hardwareId);
+                blinkService.loginStage1WithUsername(config, hardwareId);
+                logger.debug("Successfully sent username & password. Now waiting for MFA Code");
+                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_PENDING,
+                        "Waiting for MFA Code. Enter the MFA Code you received via SMS or email, then Save");
+            } else {
+                logger.debug("Submitting MFA Code to Blink Servers to complete authentication process");
+                potentialCause = "MFA code";
+                blinkAccount = blinkService.loginStage2WithMfa(config, hardwareId);
                 Configuration updatedConfig = editConfiguration();
-                updatedConfig.put("mfaCode", "");
+                updatedConfig.put("mfaCode", ""); // MFA can only be used one time, and we did, so clear it now
                 updateConfiguration(updatedConfig);
-                // Have observed that during an authentication failure, Blink is sending back an HTTP status
-                // indicating a Challenge failure, but they are not sending a WWW-Authentication header
-                // as required by the HTTP protocol. Because of this, the openhab framework's built-in
-                // jetty client throws an exception which says:
-                // "HTTP protocol violation: Authentication challenge without WWW-Authenticate header"
-                // And this is totally Blink's fault, and of no value to the openhab user. So I'm going
-                // to send a more user-friendly explanation in the Offline details.
-                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-                        "Credentials were not accepted by Blink. Verify the " + potentialCause);
+                setOnline();
+                storeBlinkAccount(blinkAccount);
             }
-        });
+        } catch (Exception e) {
+            logger.error("Error connecting to Blink servers with given credentials. Check {}", potentialCause, e);
+            // After a failure, discard the MFA code so as to start the process over again
+            Configuration updatedConfig = editConfiguration();
+            updatedConfig.put("mfaCode", "");
+            updateConfiguration(updatedConfig);
+            // Have observed that during an authentication failure, Blink is sending back an HTTP status
+            // indicating a Challenge failure, but they are not sending a WWW-Authentication header
+            // as required by the HTTP protocol. Because of this, the openhab framework's built-in
+            // jetty client throws an exception which says:
+            // "HTTP protocol violation: Authentication challenge without WWW-Authenticate header"
+            // And this is totally Blink's fault, and of no value to the openhab user. So I'm going
+            // to send a more user-friendly explanation in the Offline details.
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
+                    "Credentials were not accepted by Blink. Verify the " + potentialCause);
+        }
     }
 
     /**
@@ -249,9 +253,9 @@ public class AccountHandler extends BaseBridgeHandler {
      *         stage1 login flow, providing the username and password, and wait for the user to receive an MFA code.
      *
      */
-    @SuppressWarnings("null")
     private boolean resumeSessionFromTokens() {
-        if (blinkAccount == null || (blinkAccount.auth.refresh_token == null)) {
+        BlinkAccount localAccount = blinkAccount;
+        if ((localAccount == null) || (localAccount.auth.refresh_token == null)) {
             // we don't have any tokens in memory. Load from storage to see if there are any there.
             String blinkAccountJson = storage.get(STORAGE_KEY_BLINKACCOUNT);
             if (blinkAccountJson != null) {
@@ -270,6 +274,7 @@ public class AccountHandler extends BaseBridgeHandler {
                 }
                 blinkAccount = new BlinkAccount(storedBlinkAccount);
             }
+
         }
         if (blinkAccount == null) {
             // no account in memory, and no account in JSON (maybe we just upgraded from openhab v4.1?)
@@ -292,7 +297,7 @@ public class AccountHandler extends BaseBridgeHandler {
         return false;
     }
 
-    private void storeBlinkAccount(@Nullable BlinkAccount account) {
+    void storeBlinkAccount(@Nullable BlinkAccount account) {
         if (account == null || account.auth == null || account.account == null) {
             throw new IllegalArgumentException("This Blink Account is not authenticated yet");
         }
@@ -341,9 +346,9 @@ public class AccountHandler extends BaseBridgeHandler {
         updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR, reason);
     }
 
-    @SuppressWarnings("null")
     boolean ensureAccessTokenIsValid() {
-        if (blinkAccount == null || blinkAccount.auth == null) {
+        BlinkAccount localAccount = blinkAccount;
+        if (localAccount == null || localAccount.auth == null) {
             // If we had been ONLINE, but went OFFLINE due to network issues, we would arrive here
             // with blinkAccount being null, but perfectly resumable using the tokens in Storage
             // (once the network connectivity is restored, of course). So try that first.
@@ -351,15 +356,22 @@ public class AccountHandler extends BaseBridgeHandler {
                 logger.debug("Not currently able to connect to the commercial Blink Servers");
                 return false;
             }
+            localAccount = blinkAccount;
         }
-        boolean refreshTokenNow = (blinkAccount.auth.tokenExpiresAt == null
-                || Instant.now().isAfter(blinkAccount.auth.tokenExpiresAt));
+        if ((localAccount == null) || (localAccount.auth == null)) {
+            // We shouldn't get into this block but the extra null check is for the compiler warning.
+            logger.debug("Not currently able to connect to the commercial Blink Servers to resume session");
+            return false;
+        }
+        boolean refreshTokenNow = ((localAccount.auth.tokenExpiresAt == null)
+                || Instant.now().isAfter(localAccount.auth.tokenExpiresAt));
         if (!refreshTokenNow) {
+            // The token does not expire yet. We are good to go!
             return true;
         }
         // The access_token is expiring. Use the refresh_token to refresh it.
         try {
-            logger.debug("Refreshing blink authentication token (it expired at {})", blinkAccount.auth.tokenExpiresAt);
+            logger.debug("Refreshing blink authentication token (it expired at {})", localAccount.auth.tokenExpiresAt);
             blinkAccount = blinkService.refreshToken(blinkAccount);
             updateStatus(ThingStatus.ONLINE);
             storeBlinkAccount(blinkAccount);
@@ -453,10 +465,6 @@ public class AccountHandler extends BaseBridgeHandler {
 
     public final AccountConfiguration getConfiguration() {
         return this.config;
-    }
-
-    public final String getGeneratedClientId() {
-        return generatedClientId;
     }
 
     BlinkCamera getCameraState(CameraConfiguration camera, boolean refresh) throws IOException {

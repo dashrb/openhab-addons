@@ -95,9 +95,10 @@ public class AccountService extends BaseBlinkApiService {
         Map<String, String> params = new HashMap<>();
 
         loginStage1SendHardwareId(hardwareId);
-        csrfToken = loginStage1GetCsrfToken();
-        if (csrfToken != null) {
-            params.put("csrf-token", csrfToken);
+        String newcsrf = loginStage1GetCsrfToken();
+        csrfToken = newcsrf;
+        if (newcsrf != null) {
+            params.put("csrf-token", newcsrf);
         }
         params.put("username", config.email);
         params.put("password", config.password);
@@ -112,6 +113,9 @@ public class AccountService extends BaseBlinkApiService {
      * @throws IOException if there is a problem with the endpoint (maybe a network connectivity issue)
      */
     private void loginStage1SendHardwareId(String hardwareId) throws IOException {
+        if (hardwareId.isBlank()) {
+            throw new IOException("Unable to login without an internally generated hardware id");
+        }
         Map<String, String> params = new HashMap<String, String>();
         String url = OAUTH_BASE_URL + OAUTH_INITIAL_AUTH_URI;
 
@@ -247,16 +251,15 @@ public class AccountService extends BaseBlinkApiService {
     public BlinkAccount loginStage2WithMfa(@Nullable AccountConfiguration config, @Nullable String hardwareId)
             throws IOException {
         String userId = "";
-        if (config == null || hardwareId == null || csrfToken == null) {
+        String newcsrf = csrfToken;
+
+        if (config == null || hardwareId == null || newcsrf == null) {
             throw new IllegalArgumentException("Cannot complete Blink OAUTH login without initial login values");
         }
 
         logger.debug("MFA code exists ({})! Initiating second half of login flow.... ", config.mfaCode);
 
-        // Of course it's not null, I just checked this above, throwing an exception.
-        if (csrfToken != null) {
-            userId = loginStage2SendMfaCode(csrfToken, config.mfaCode);
-        }
+        userId = loginStage2SendMfaCode(newcsrf, config.mfaCode);
 
         String authCode = loginStage2GetAuthCode();
         BlinkAccount.Auth auth = loginStage2GetTokens(authCode, hardwareId);
