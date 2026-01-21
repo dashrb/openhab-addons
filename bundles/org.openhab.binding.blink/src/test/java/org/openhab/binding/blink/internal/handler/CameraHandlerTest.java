@@ -35,6 +35,7 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openhab.binding.blink.internal.BlinkTestUtil;
 import org.openhab.binding.blink.internal.config.CameraConfiguration;
+import org.openhab.binding.blink.internal.config.CameraConfiguration.CameraType;
 import org.openhab.binding.blink.internal.dto.BlinkAccount;
 import org.openhab.binding.blink.internal.dto.BlinkCamera;
 import org.openhab.binding.blink.internal.service.CameraService;
@@ -109,6 +110,45 @@ public class CameraHandlerTest {
     @NonNullByDefault({})
     CameraService cameraService;
 
+    private BlinkCamera getCameraTestInstance() {
+        BlinkCamera cam = new BlinkCamera(123L, 567L);
+        cam.battery = "low";
+        cam.color = "black";
+        cam.created_at = "2026-01-01T00:01:23+00:00";
+        cam.enabled = true;
+        cam.fw_version = "1.1";
+        cam.name = "Test Camera";
+        cam.revision = null;
+        cam.serial = "XYZ123";
+        cam.status = "done";
+        cam.thumbnail = "thumbnail-url";
+        cam.type = CameraType.CAMERA.toString();
+        cam.updated_at = "2026-01-16T02:14:43+00:00";
+        cam.usage_rate = false;
+        cam.signals = cam.new Signals();
+        cam.signals.battery = 2;
+        cam.signals.lfr = 4;
+        cam.signals.wifi = 5;
+        cam.signals.temp = 73;
+        cam.details = cam.new Details();
+        cam.details.signals = cam.new SignalsDetails();
+        cam.details.signals.lfr = 4;
+        cam.details.signals.lfr_rssi = -40;
+        cam.details.signals.wifi = 5;
+        cam.details.signals.wifi_rssi = -35;
+        cam.details.camera = new BlinkCamera.HardwareDetails[1];
+        cam.details.camera[0] = cam.new HardwareDetails();
+        cam.details.camera[0].battery_check_time = "2026-01-16T01:14:43+00:00";
+        cam.details.camera[0].battery_voltage = 163;
+        cam.details.camera[0].first_boot = "2020-03-05T12:14:43+00:00";
+        cam.details.camera[0].mac_address = "aa:bb:ee:ff:11:22:33:44";
+        cam.details.camera[0].last_connect = cam.new ConnectionDetails();
+        cam.details.camera[0].last_connect.ac_power = false;
+        cam.details.camera[0].last_connect.ip_address = "192.168.1.199";
+        cam.details.camera[0].last_connect.socket_failure_count = 0;
+        return cam;
+    }
+
     @BeforeEach
     void setup() {
         when(httpClientFactory.getCommonHttpClient()).thenReturn(new HttpClient());
@@ -143,7 +183,7 @@ public class CameraHandlerTest {
     @Test
     void testSetOfflineOnHandleCommandException() throws IOException {
         cameraHandler.accountHandler = accountHandler;
-        doThrow(IOException.class).when(accountHandler).getTemperature(any());
+        doThrow(IOException.class).when(accountHandler).getCameraState(any(), eq(false));
         cameraHandler.handleCommand(CHANNEL_CAMERA_TEMPERATURE, RefreshType.REFRESH);
         ArgumentCaptor<ThingStatusInfo> statusCaptor = ArgumentCaptor.forClass(ThingStatusInfo.class);
         verify(callback, atLeastOnce()).statusUpdated(eq(thing), statusCaptor.capture());
@@ -154,13 +194,12 @@ public class CameraHandlerTest {
     @Test
     void testRefreshTemperatureChannel() throws IOException {
         cameraHandler.accountHandler = accountHandler;
-        double toBeReturned = 25.0;
-        doReturn(toBeReturned).when(accountHandler).getTemperature(any());
+        double toBeReturned = 69.0;
+        BlinkCamera camera = this.getCameraTestInstance();
+        camera.signals.temp = toBeReturned;
+        doReturn(camera).when(accountHandler).getCameraState(any(), eq(false));
         cameraHandler.handleCommand(CHANNEL_CAMERA_TEMPERATURE, RefreshType.REFRESH);
         ArgumentCaptor<State> stateCaptor = ArgumentCaptor.forClass(State.class);
-        CameraConfiguration handlerConfig = cameraHandler.config;
-        CameraConfiguration config = (handlerConfig == null) ? new CameraConfiguration() : handlerConfig;
-        verify(accountHandler).getTemperature(config);
         verify(callback).stateUpdated(eq(CHANNEL_CAMERA_TEMPERATURE), stateCaptor.capture());
         assertThat(stateCaptor.getValue(), is(new QuantityType<>(toBeReturned, ImperialUnits.FAHRENHEIT)));
     }
@@ -168,27 +207,25 @@ public class CameraHandlerTest {
     @Test
     void testRefreshBatteryChannel() throws IOException {
         cameraHandler.accountHandler = accountHandler;
-        doReturn(OnOffType.ON).when(accountHandler).getBattery(any());
+        BlinkCamera camera = this.getCameraTestInstance();
+        camera.battery = "ok"; // different value from original
+        doReturn(camera).when(accountHandler).getCameraState(any(), eq(false));
         cameraHandler.handleCommand(CHANNEL_CAMERA_BATTERY, RefreshType.REFRESH);
         ArgumentCaptor<State> stateCaptor = ArgumentCaptor.forClass(State.class);
-        CameraConfiguration handlerConfig = cameraHandler.config;
-        CameraConfiguration config = (handlerConfig == null) ? new CameraConfiguration() : handlerConfig;
-        verify(accountHandler).getBattery(config);
         verify(callback).stateUpdated(eq(CHANNEL_CAMERA_BATTERY), stateCaptor.capture());
-        assertThat(stateCaptor.getValue(), is(OnOffType.ON));
+        assertThat(stateCaptor.getValue(), is(OnOffType.OFF));
     }
 
     @Test
     void testRefreshMotionDetectionChannel() throws IOException {
         cameraHandler.accountHandler = accountHandler;
-        doReturn(OnOffType.ON).when(accountHandler).getMotionDetection(any(), eq(false));
+        BlinkCamera camera = this.getCameraTestInstance();
+        camera.enabled = false;
+        doReturn(camera).when(accountHandler).getCameraState(any(), eq(false));
         cameraHandler.handleCommand(CHANNEL_CAMERA_MOTIONDETECTION, RefreshType.REFRESH);
         ArgumentCaptor<State> stateCaptor = ArgumentCaptor.forClass(State.class);
-        CameraConfiguration handlerConfig = cameraHandler.config;
-        CameraConfiguration config = (handlerConfig == null) ? new CameraConfiguration() : handlerConfig;
-        verify(accountHandler).getMotionDetection(config, false);
         verify(callback).stateUpdated(eq(CHANNEL_CAMERA_MOTIONDETECTION), stateCaptor.capture());
-        assertThat(stateCaptor.getValue(), is(OnOffType.ON));
+        assertThat(stateCaptor.getValue(), is(OnOffType.OFF));
     }
 
     @Test
@@ -241,8 +278,7 @@ public class CameraHandlerTest {
         doReturn(blinkAccount).when(accountHandler).getBlinkAccount();
         CameraService cameraService = mock(CameraService.class);
         cameraHandler.cameraService = cameraService;
-        BlinkCamera camera = new BlinkCamera(123L, 234L);
-        camera.thumbnail = "/full/path/to/thumbnail.jpg";
+        BlinkCamera camera = this.getCameraTestInstance();
         doReturn(camera).when(accountHandler).getCameraState(ArgumentMatchers.any(CameraConfiguration.class),
                 eq(false));
         byte[] bytes = "expected".getBytes(StandardCharsets.UTF_8);
@@ -270,30 +306,20 @@ public class CameraHandlerTest {
         cameraHandler.accountHandler = accountHandler;
         cameraHandler.cameraService = cameraService;
         doReturn(BlinkTestUtil.testBlinkAccount()).when(accountHandler).getBlinkAccount();
-        double temperature = 22.0;
-        OnOffType battery = OnOffType.ON;
-        OnOffType motionDetection = OnOffType.OFF;
-        BlinkCamera camera = new BlinkCamera(123L, 234L);
-        camera.thumbnail = "thumbnail";
-        byte[] thumbnail = new byte[0];
-        doReturn(temperature).when(accountHandler).getTemperature(any());
-        doReturn(battery).when(accountHandler).getBattery(any());
-        doReturn(motionDetection).when(accountHandler).getMotionDetection(any(), anyBoolean());
-        doReturn(camera).when(accountHandler).getCameraState(any(), anyBoolean());
-        doReturn(thumbnail).when(cameraService).getThumbnail(any(), any());
+        BlinkCamera camera = this.getCameraTestInstance();
+        doReturn(camera).when(accountHandler).getCameraState(any(), eq(false));
+        doReturn(camera.details).when(cameraService).getCameraDetails(any(), any());
         cameraHandler.handleHomescreenUpdate();
-        verify(callback).stateUpdated(CHANNEL_CAMERA_TEMPERATURE,
-                new QuantityType<>(temperature, ImperialUnits.FAHRENHEIT));
-        verify(callback).stateUpdated(CHANNEL_CAMERA_BATTERY, battery);
-        verify(callback).stateUpdated(CHANNEL_CAMERA_MOTIONDETECTION, motionDetection);
+        verify(callback).stateUpdated(CHANNEL_CAMERA_TEMPERATURE, new QuantityType<>(73.0, ImperialUnits.FAHRENHEIT));
+        verify(callback).stateUpdated(CHANNEL_CAMERA_BATTERY, OnOffType.ON);
+        verify(callback).stateUpdated(CHANNEL_CAMERA_MOTIONDETECTION, OnOffType.ON);
         verify(accountHandler).getCameraState(any(), eq(false));
-        verify(callback).stateUpdated(CHANNEL_CAMERA_GETTHUMBNAIL, new RawType(thumbnail, "image/jpeg"));
     }
 
     @Test
     void testHandleHomescreenUpdateOnException() throws IOException {
         cameraHandler.cameraService = cameraService;
-        doThrow(IOException.class).when(accountHandler).getTemperature(any());
+        doThrow(IOException.class).when(cameraService).getCameraDetails(any(), any());
         cameraHandler.handleHomescreenUpdate();
         ArgumentCaptor<ThingStatusInfo> statusCaptor = ArgumentCaptor.forClass(ThingStatusInfo.class);
         verify(callback, atLeastOnce()).statusUpdated(eq(thing), statusCaptor.capture());
