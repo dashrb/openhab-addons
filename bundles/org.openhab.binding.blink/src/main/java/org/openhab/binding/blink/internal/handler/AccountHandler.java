@@ -513,7 +513,8 @@ public class AccountHandler extends BaseBridgeHandler {
                     account.account.account_id, listToSearch.size(), camera.cameraType);
             throw new IOException("Unknown camera " + cameraId);
         }
-        return foundCameras.get(0);
+        BlinkCamera targetCamera = foundCameras.get(0);
+        return targetCamera;
     }
 
     BlinkNetwork getNetworkState(String networkId, boolean refresh) throws IOException {
@@ -568,7 +569,6 @@ public class AccountHandler extends BaseBridgeHandler {
             logger.error("Blink Account is not authenticated yet");
             throw new IOException("Blink Account is not authenticated yet");
         }
-
         return getCameraState(account, camera, false).signals.temp;
     }
 
@@ -602,6 +602,9 @@ public class AccountHandler extends BaseBridgeHandler {
     private Stream<EventListener> streamEventListeners() {
         // -rb removed the filter for status ONLINE, otherwise dead battery cameras will never return online
         // .filter(thing -> thing.getStatus() == ThingStatus.ONLINE)
+        List<Thing> tmp = getThing().getThings();
+        int countThings = tmp.size();
+        logger.trace("There are {} Things which are listening to events", countThings);
         return getThing().getThings().stream().map(Thing::getHandler).filter(Objects::nonNull)
                 .map(EventListener.class::cast);
     }

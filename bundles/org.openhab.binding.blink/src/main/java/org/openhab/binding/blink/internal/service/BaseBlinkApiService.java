@@ -54,7 +54,7 @@ import com.google.gson.Gson;
 public class BaseBlinkApiService {
 
     public static final String USER_AGENT = "27.0ANDROID_28373244";
-    private final Logger logger = LoggerFactory.getLogger(BaseBlinkApiService.class);
+    protected final Logger logger = LoggerFactory.getLogger(BaseBlinkApiService.class);
 
     private static final String BASE_URL = "https://rest-{tier}.immedia-semi.com";
     static final String CONTENT_TYPE_JSON = "application/json; charset=UTF-8";

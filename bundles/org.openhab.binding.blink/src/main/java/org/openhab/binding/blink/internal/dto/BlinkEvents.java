@@ -73,7 +73,7 @@ public class BlinkEvents {
              **/
         }
 
-        public boolean isCamera(CameraConfiguration config) {
+        public boolean isForThisCamera(CameraConfiguration config) {
             return isCamera() && network_id == config.networkId && device_id == config.cameraId;
         }
 

@@ -20,6 +20,7 @@ import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.http.HttpMethod;
 import org.openhab.binding.blink.internal.config.CameraConfiguration;
 import org.openhab.binding.blink.internal.dto.BlinkAccount;
+import org.openhab.binding.blink.internal.dto.BlinkCamera;
 import org.openhab.binding.blink.internal.dto.BlinkCommand;
 
 import com.google.gson.Gson;
@@ -162,4 +163,43 @@ public class CameraService extends BaseBlinkApiService {
         }
         return rawRequest(account.account.tier, imagePath + extension, HttpMethod.GET, account.auth.access_token, null);
     }
+
+    /**
+     * This method returns significant details about the Camera, in a CameraDetails DTO.
+     * WARNING: Calling this function with a Doorbell or Mini will result in a IOException (404 not found)
+     * as the Blink system does not support this API endpoint with those lesser camera devices.
+     *
+     * @param account
+     * @param camera
+     * @throws IOException
+     */
+    public BlinkCamera.Details getCameraDetails(@Nullable BlinkAccount account, CameraConfiguration camera)
+            throws IOException {
+        if (account == null || account.account == null) {
+            throw new IllegalArgumentException("This Blink Account is not authenticated yet");
+        }
+        String uri = "/network/" + camera.networkId + "/camera/" + camera.cameraId + "/config";
+        BlinkCamera.Details details = apiRequest(account.account.tier, uri, HttpMethod.GET, account.auth.access_token,
+                null, BlinkCamera.Details.class);
+        return details;
+    }
+
+    /**
+     * This doesn't appear to have anything additional over the homescreen sensor info.
+     *
+     * @param account
+     * @param camera
+     * @throws IOException
+     */
+    public void getCameraSensors(@Nullable BlinkAccount account, CameraConfiguration camera) throws IOException {
+        if (account == null || account.account == null) {
+            throw new IllegalArgumentException("This Blink Account is not authenticated yet");
+        }
+        String uri = "/network/" + camera.networkId + "/camera/" + camera.cameraId + "/signals";
+        String command = "";
+        String json = request(account.account.tier, uri, HttpMethod.GET, account.auth.access_token, null, command);
+        logger.trace("camera {} sensors: {}", camera.cameraId, json);
+        return;
+    }
+
 }

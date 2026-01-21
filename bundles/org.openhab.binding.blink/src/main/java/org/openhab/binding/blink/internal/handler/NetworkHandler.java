@@ -99,7 +99,7 @@ public class NetworkHandler extends BaseThingHandler implements EventListener {
     @Override
     public void handleHomescreenUpdate() {
         try {
-            logger.trace("Network {} checking for state updates", config.networkId);
+            logger.trace("Sync Module {} (Network {}) checking for state updates", thing.getLabel(), config.networkId);
             updateState(CHANNEL_NETWORK_ARMED, accountHandler.getNetworkArmed(String.valueOf(config.networkId), false));
             updateStatus(ThingStatus.ONLINE);
         } catch (IOException e) {
