@@ -201,5 +201,4 @@ public class CameraService extends BaseBlinkApiService {
         logger.trace("camera {} sensors: {}", camera.cameraId, json);
         return;
     }
-
 }
