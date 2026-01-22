@@ -79,7 +79,9 @@ public class CameraHandler extends BaseThingHandler implements EventListener {
     ThumbnailServlet thumbnailServlet;
 
     String lastThumbnailPath = ""; // the homescreen thumbnail (comes from polling)
-    String lastMotionThumbnailPath = ""; // a thumbnail from the most recent recording (comes from homescreen refresh)
+    // the most recent motion event / thumbnail, if any.
+    BlinkEvents.@Nullable Media lastMotionEvent = null;
+
     DateTimeFormatter dateOnlyFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneId.systemDefault());
 
     public CameraHandler(Thing thing, HttpService httpService, NetworkAddressService networkAddressService,
@@ -188,7 +190,11 @@ public class CameraHandler extends BaseThingHandler implements EventListener {
     }
 
     public byte[] getMotionThumbnail() throws IOException {
-        return cameraService.getThumbnail(accountHandler.getBlinkAccount(), lastMotionThumbnailPath);
+        BlinkEvents.Media event = lastMotionEvent;
+        if (event == null) {
+            throw new IOException("No motion thumbnail found for camera " + this.thing.getLabel());
+        }
+        return cameraService.getThumbnail(accountHandler.getBlinkAccount(), event.thumbnail);
     }
 
     @Override
@@ -389,24 +395,28 @@ public class CameraHandler extends BaseThingHandler implements EventListener {
 
     @Override
     public void handleMediaEvent(BlinkEvents.Media mediaEvent) {
-        if (mediaEvent.isNewEvent()) {
-            if (mediaEvent.isForThisCamera(config)) {
-                logger.debug("Triggering motion event for camera {}, thumbnail={}", config.cameraId,
-                        mediaEvent.thumbnail);
-                if (!lastMotionThumbnailPath.equals(mediaEvent.thumbnail)) {
-                    logger.debug("New motion thumbnail! OLD={}, NEW={}", lastMotionThumbnailPath, mediaEvent.thumbnail);
-                    lastMotionThumbnailPath = mediaEvent.thumbnail;
-                    try {
-                        updateState(CHANNEL_CAMERA_MOTIONTHUMBNAIL, new RawType(
-                                cameraService.getThumbnail(accountHandler.getBlinkAccount(), mediaEvent.thumbnail),
+        if (!mediaEvent.isForThisCamera(config)) {
+            return;
+        }
+
+        BlinkEvents.Media lastMotion = lastMotionEvent;
+        if ((lastMotion == null) || (lastMotion.created_at.isBefore(mediaEvent.created_at))) {
+            // The incoming motion event is newer than the most recent one we stored.
+            // Store the new one, and update the motion thumbnail channel accordingly.
+            String word = mediaEvent.isNewEvent() ? "New" : "New (OLD)";
+            logger.debug("{}: {} motion thumbnail! {}", thing.getLabel(), word, mediaEvent.thumbnail);
+            lastMotionEvent = mediaEvent;
+            try {
+                updateState(CHANNEL_CAMERA_MOTIONTHUMBNAIL,
+                        new RawType(cameraService.getThumbnail(accountHandler.getBlinkAccount(), mediaEvent.thumbnail),
                                 "image/jpeg"));
-                    } catch (IOException e) {
-                        logger.debug("Failed to update thumbnail from recent motion event from {}.",
-                                mediaEvent.thumbnail, e);
-                    }
-                }
-                triggerChannel(CHANNEL_CAMERA_MOTIONTRIGGERED);
+            } catch (IOException e) {
+                logger.debug("Failed to update thumbnail from recent motion event from {}.", mediaEvent.thumbnail, e);
             }
+        }
+        if (mediaEvent.isNewEvent()) {
+            logger.debug("Triggering motion for camera {}, motion time={}", thing.getLabel(), mediaEvent.created_at);
+            triggerChannel(CHANNEL_CAMERA_MOTIONTRIGGERED);
         }
     }
 

@@ -40,17 +40,18 @@ public class BlinkEvents {
         public String device;
         public long device_id;
         public long network_id;
+        public boolean is_new_event = true; // not in JSON, we set this to false when loading historical events
 
         public boolean isDeletedEvent() {
             return deleted;
         }
 
         public boolean isUpdatedEvent() {
-            return !created_at.isEqual(updated_at);
+            return !created_at.isEqual(updated_at); // blink updates the field "updated_at" when you watch the clip
         }
 
         public boolean isNewEvent() {
-            return !isDeletedEvent() && !isUpdatedEvent();
+            return (is_new_event) && (!isDeletedEvent() && !isUpdatedEvent());
         }
 
         public boolean isCamera() {

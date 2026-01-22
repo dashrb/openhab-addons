@@ -23,8 +23,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -32,6 +32,7 @@ import java.util.stream.Stream;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.binding.blink.internal.MediaManager;
 import org.openhab.binding.blink.internal.config.AccountConfiguration;
 import org.openhab.binding.blink.internal.config.CameraConfiguration;
 import org.openhab.binding.blink.internal.discovery.BlinkDiscoveryService;
@@ -86,7 +87,6 @@ public class AccountHandler extends BaseBridgeHandler {
     @Nullable
     BlinkHomescreen cachedHomescreen;
     OffsetDateTime eventSince = EPOCH_UTC;
-    final Map<Long, BlinkEvents.Media> eventStore = new ConcurrentHashMap<>();
     @Nullable
     ScheduledFuture<?> refreshStateJob;
     private final Object refreshStateMonitor = new Object();
@@ -94,6 +94,7 @@ public class AccountHandler extends BaseBridgeHandler {
     private Gson gson;
     private static int MAX_FAILURES_BEFORE_OFFLINE = 5;
     private static String STORAGE_KEY_BLINKACCOUNT = "BlinkAccount";
+    MediaManager mediaManager = new MediaManager();
 
     public AccountHandler(Bridge bridge, BundleContext bundleContext, StorageService storageService,
             HttpClientFactory httpClientFactory, Gson gson) {
@@ -101,7 +102,7 @@ public class AccountHandler extends BaseBridgeHandler {
         this.bundleContext = bundleContext;
         this.gson = gson;
         String uuid = this.getThing().getUID().getAsString();
-        uuid = uuid.replace(':', '_'); // The filesystem storage service converts ":" to "%3A", I prefer a clean "_"S
+        uuid = uuid.replace(':', '_'); // The filesystem storage service converts ":" to "%3A", I prefer a clean "_"
         String storageName = "org.openhab.binding.blink." + uuid;
         this.storage = storageService.getStorage(storageName, String.class.getClassLoader());
         this.blinkService = new AccountService(httpClientFactory.getCommonHttpClient(), storage, gson);
@@ -440,14 +441,14 @@ public class AccountHandler extends BaseBridgeHandler {
     }
 
     void loadEvents() throws IOException {
-        logger.debug("Loading events from Blink API");
+        logger.debug("Loading events from Blink API since {}", eventSince);
         BlinkEvents events = blinkService.getEvents(blinkAccount, eventSince);
         OffsetDateTime nextEventSince = eventSince;
         for (BlinkEvents.Media mediaEvent : events.media) {
             if (mediaEvent.deleted) {
-                eventStore.remove(mediaEvent.id);
+                mediaManager.removeEvent(mediaEvent.id);
             } else {
-                eventStore.put(mediaEvent.id, mediaEvent);
+                mediaManager.addEvent(mediaEvent.id, mediaEvent);
             }
             if (nextEventSince.isBefore(mediaEvent.updated_at)) {
                 nextEventSince = mediaEvent.updated_at;
@@ -455,6 +456,15 @@ public class AccountHandler extends BaseBridgeHandler {
             // only trigger events if not polling for the first time
             if (!eventSince.isEqual(EPOCH_UTC)) {
                 fireMediaEvent(mediaEvent);
+            } else {
+                mediaEvent.is_new_event = false;
+            }
+        }
+        if (eventSince.isEqual(EPOCH_UTC)) {
+            // if we have just finished loading all historical events, send the most recent motion
+            Set<BlinkEvents.Media> latestEvents = mediaManager.getLatestMotionEvents();
+            for (BlinkEvents.Media event : latestEvents) {
+                fireMediaEvent(event);
             }
         }
         eventSince = nextEventSince;

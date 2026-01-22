@@ -220,7 +220,7 @@ class AccountHandlerTest extends JavaTest {
         assertThat(accountHandler.blinkAccount, is(nullValue()));
         assertThat(accountHandler.cachedHomescreen, is(nullValue()));
         assertThat(accountHandler.eventSince, is(equalTo(Instant.EPOCH.atOffset(ZoneOffset.UTC))));
-        assertThat(accountHandler.eventStore, is(anEmptyMap()));
+        assertThat(accountHandler.mediaManager.getLatestMotionEvents().size(), is(0));
     }
 
     BlinkHomescreen testBlinkHomescreen() {
@@ -234,6 +234,8 @@ class AccountHandlerTest extends JavaTest {
         BlinkEvents.Media media = new BlinkEvents.Media();
         media.id = EVENT_ID;
         media.updated_at = UPDATED_AT;
+        media.created_at = UPDATED_AT;
+        media.thumbnail = "My/Thumbnail/here.jpg";
         BlinkEvents events = new BlinkEvents();
         events.media = List.of(media);
         return events;
@@ -290,21 +292,19 @@ class AccountHandlerTest extends JavaTest {
         accountHandler.loadEvents();
         verify(accountService).getEvents(same(accountHandler.blinkAccount), eq(Instant.EPOCH.atOffset(ZoneOffset.UTC)));
         assertThat(accountHandler.eventSince, is(equalTo(UPDATED_AT)));
-        assertThat(accountHandler.eventStore, hasKey(EVENT_ID));
+        assertThat(accountHandler.mediaManager.getLatestMotionEvents().size(), is(1));
         events.media.get(0).deleted = true;
         accountHandler.loadEvents();
         verify(accountService).getEvents(same(accountHandler.blinkAccount), eq(UPDATED_AT));
-        assertThat(accountHandler.eventStore, is(anEmptyMap()));
+        assertThat(accountHandler.mediaManager.getLatestMotionEvents().size(), is(0));
     }
 
     @Test
-    void testLoadEventsTriggersOnlyOnConsecutiveLoad() throws IOException {
+    void testLoadEventsTriggersCameras() throws IOException {
         accountHandler.blinkService = accountService;
         accountHandler.blinkAccount = BlinkTestUtil.testBlinkAccount();
         BlinkEvents events = testBlinkEvents();
         doReturn(events).when(accountService).getEvents(any(), any());
-        accountHandler.loadEvents();
-        verify(accountHandler, times(0)).fireMediaEvent(any());
         accountHandler.loadEvents();
         verify(accountHandler).fireMediaEvent(same(events.media.get(0)));
     }
