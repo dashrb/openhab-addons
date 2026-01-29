@@ -127,7 +127,8 @@ class AccountHandlerTest extends JavaTest {
         when(bridge.getConfiguration()).thenReturn(config);
         when(storage.get(any())).thenReturn(null);
         when(storageService.getStorage(any(), any())).thenReturn(storage);
-        accountHandler = spy(new AccountHandler(bridge, bundleContext, storageService, httpClientFactory, new Gson()));
+        accountHandler = spy(new AccountHandler(bridge, bundleContext, httpService, networkAddressService,
+                storageService, httpClientFactory, new Gson()));
 
         AccountConfiguration accountConfig = new AccountConfiguration();
         accountConfig.email = config.get("email").toString();

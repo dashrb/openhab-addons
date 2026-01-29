@@ -61,6 +61,7 @@ public class ThumbnailServlet extends HttpServlet {
         } catch (NamespaceException | ServletException e) {
             throw new IllegalStateException(e.getMessage());
         }
+        logger.info("Constructed camera thumbnail servlet at url {}", servletUrl);
     }
 
     public void dispose() {
@@ -89,6 +90,7 @@ public class ThumbnailServlet extends HttpServlet {
         }
     }
 
+    @Override
     protected void doPost(@Nullable HttpServletRequest request, @Nullable HttpServletResponse response)
             throws IOException {
         if (response == null) {

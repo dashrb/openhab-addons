@@ -42,9 +42,11 @@ import org.openhab.binding.blink.internal.dto.BlinkEvents;
 import org.openhab.binding.blink.internal.dto.BlinkHomescreen;
 import org.openhab.binding.blink.internal.dto.BlinkNetwork;
 import org.openhab.binding.blink.internal.service.AccountService;
+import org.openhab.binding.blink.internal.servlet.MediaServlet;
 import org.openhab.core.config.core.Configuration;
 import org.openhab.core.io.net.http.HttpClientFactory;
 import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.net.NetworkAddressService;
 import org.openhab.core.storage.Storage;
 import org.openhab.core.storage.StorageService;
 import org.openhab.core.thing.Bridge;
@@ -56,6 +58,7 @@ import org.openhab.core.thing.binding.BaseBridgeHandler;
 import org.openhab.core.thing.binding.ThingHandlerService;
 import org.openhab.core.types.Command;
 import org.osgi.framework.BundleContext;
+import org.osgi.service.http.HttpService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,6 +84,8 @@ public class AccountHandler extends BaseBridgeHandler {
     @NonNullByDefault({})
     AccountConfiguration config;
     AccountService blinkService;
+    private final HttpService httpService;
+    private final NetworkAddressService networkAddressService;
     Storage<String> storage;
     @Nullable
     BlinkAccount blinkAccount;
@@ -95,17 +100,25 @@ public class AccountHandler extends BaseBridgeHandler {
     private static int MAX_FAILURES_BEFORE_OFFLINE = 5;
     private static String STORAGE_KEY_BLINKACCOUNT = "BlinkAccount";
     MediaManager mediaManager = new MediaManager();
+    @Nullable
+    MediaServlet mediaServlet;
 
-    public AccountHandler(Bridge bridge, BundleContext bundleContext, StorageService storageService,
+    public AccountHandler(Bridge bridge, BundleContext bundleContext, HttpService httpService,
+            NetworkAddressService networkAddressService, StorageService storageService,
             HttpClientFactory httpClientFactory, Gson gson) {
         super(bridge);
         this.bundleContext = bundleContext;
+        logger.info("Welcome to the Blink Binding, version {}", bundleContext.getBundle().getVersion());
+        updateProperty("Blink Binding Version", bundleContext.getBundle().getVersion().toString());
+
         this.gson = gson;
         String uuid = this.getThing().getUID().getAsString();
         uuid = uuid.replace(':', '_'); // The filesystem storage service converts ":" to "%3A", I prefer a clean "_"
         String storageName = "org.openhab.binding.blink." + uuid;
         this.storage = storageService.getStorage(storageName, String.class.getClassLoader());
         this.blinkService = new AccountService(httpClientFactory.getCommonHttpClient(), storage, gson);
+        this.httpService = httpService;
+        this.networkAddressService = networkAddressService;
     }
 
     @Override
@@ -135,6 +148,15 @@ public class AccountHandler extends BaseBridgeHandler {
             userEmailUpdated = false;
         }
         config = getConfigAs(AccountConfiguration.class);
+
+        if (mediaServlet == null) {
+            try {
+                logger.trace("Registering media servlet");
+                mediaServlet = new MediaServlet(httpService, this);
+            } catch (IllegalStateException e) {
+                logger.warn("Failed to create media servlet", e);
+            }
+        }
 
         // set the thing status to UNKNOWN temporarily and let the background task decide for the real status.
         updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_PENDING, explanation);
@@ -325,6 +347,14 @@ public class AccountHandler extends BaseBridgeHandler {
                 refreshStateJob = null;
             }
         }
+
+        MediaServlet media = this.mediaServlet;
+        if (media != null) {
+            logger.debug("Disposing Media servlet");
+            media.dispose();
+        }
+        this.mediaServlet = null;
+
         logger.debug("cleanup {}", getThing().getUID().getAsString());
     }
 
@@ -476,6 +506,10 @@ public class AccountHandler extends BaseBridgeHandler {
 
     public final AccountConfiguration getConfiguration() {
         return this.config;
+    }
+
+    public MediaManager getMediaManager() {
+        return mediaManager;
     }
 
     BlinkCamera getCameraState(CameraConfiguration camera, boolean refresh) throws IOException {

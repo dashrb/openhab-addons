@@ -83,7 +83,8 @@ public class BlinkHandlerFactory extends BaseThingHandlerFactory {
     protected @Nullable ThingHandler createHandler(Thing thing) {
         ThingTypeUID thingTypeUID = thing.getThingTypeUID();
         if (THING_TYPE_ACCOUNT.equals(thingTypeUID)) {
-            return new AccountHandler((Bridge) thing, getBundleContext(), storageService, httpClientFactory, gson);
+            return new AccountHandler((Bridge) thing, getBundleContext(), httpService, networkAddressService,
+                    storageService, httpClientFactory, gson);
         } else if (THING_TYPE_CAMERA.equals(thingTypeUID)) {
             return new CameraHandler(thing, httpService, networkAddressService, httpClientFactory, gson);
         } else if (THING_TYPE_NETWORK.equals(thingTypeUID)) {

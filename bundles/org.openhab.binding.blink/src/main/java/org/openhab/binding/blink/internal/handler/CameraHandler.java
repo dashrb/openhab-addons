@@ -217,6 +217,7 @@ public class CameraHandler extends BaseThingHandler implements EventListener {
             return;
         }
         accountHandler = (AccountHandler) bridge.getHandler();
+        accountHandler.mediaManager.registerCameraThing(config.cameraId, thing);
 
         if (thumbnailServlet == null) {
             try {

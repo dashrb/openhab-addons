@@ -16,14 +16,18 @@
 package org.openhab.binding.blink.internal;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.openhab.binding.blink.internal.dto.BlinkEvents;
+import org.openhab.core.thing.Thing;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +42,7 @@ public class MediaManager {
     private final Logger logger = LoggerFactory.getLogger(MediaManager.class);
     private final Map<Long, BlinkEvents.Media> allEventsById = new ConcurrentHashMap<>();
     private final Map<Long, TreeSet<BlinkEvents.Media>> eventsByCameraId = new ConcurrentHashMap<>();
+    private final Map<Long, Thing> cameraThingsByCameraId = new HashMap<>();
 
     private static EventComparator comparator = new EventComparator();
 
@@ -80,16 +85,51 @@ public class MediaManager {
         Set<BlinkEvents.Media> result = new HashSet<>();
         for (Long key : eventsByCameraId.keySet()) {
             TreeSet<BlinkEvents.Media> eventsForThisCam = eventsByCameraId.get(key);
-            if (eventsForThisCam.size() > 0) {
+            if (eventsForThisCam != null && eventsForThisCam.size() > 0) {
                 BlinkEvents.Media latestEntry = eventsForThisCam.last();
                 result.add(latestEntry);
-                logger.debug("Camera {} has {} recordings, most recent is {}", latestEntry.device_id,
+                logger.debug("Camera {} has {} recordings, most recent is {}", getCameraName(key),
                         eventsForThisCam.size(), latestEntry);
             } else {
-                logger.debug("Camera {} has 0 recordings so far", key);
+                logger.debug("Camera {} has 0 recordings so far", getCameraName(key));
             }
         }
         return result;
+    }
+
+    public Collection<BlinkEvents.Media> getAllMotionEvents() {
+        return allEventsById.values();
+    }
+
+    private String getCameraName(long device_id) {
+        String name = "id " + device_id;
+        Thing cam = cameraThingsByCameraId.get(device_id);
+        if (cam != null) {
+            String label = cam.getLabel();
+            if (label != null && label.length() > 0) {
+                name = cam.getLabel();
+            }
+        }
+        return name;
+    }
+
+    /**
+     * Return a sorted map of camera name to id, for each camera with stored clips. This is used to define the swimlanes
+     * in the MediaServlet.
+     */
+    public Map<String, Long> getCamerasToIds() {
+        Map<String, Long> copyMap = new TreeMap<>();
+        for (Long key : cameraThingsByCameraId.keySet()) {
+            Thing cam = cameraThingsByCameraId.get(key);
+            if (cam != null) {
+                copyMap.put(cam.getLabel(), key);
+            }
+        }
+        return copyMap;
+    }
+
+    public void registerCameraThing(Long id, Thing camera) {
+        this.cameraThingsByCameraId.put(id, camera);
     }
 
     public static class EventComparator implements Comparator<BlinkEvents.Media> {
