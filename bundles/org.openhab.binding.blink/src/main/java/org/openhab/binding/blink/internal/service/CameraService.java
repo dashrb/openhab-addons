@@ -153,17 +153,6 @@ public class CameraService extends BaseBlinkApiService {
         return request(account.account.tier, uri, HttpMethod.POST, account.auth.access_token, null, command);
     }
 
-    public byte[] getThumbnail(@Nullable BlinkAccount account, String imagePath) throws IOException {
-        String extension = "";
-        if (account == null || account.account == null) {
-            throw new IllegalArgumentException("This Blink Account is not authenticated yet");
-        }
-        if (!imagePath.endsWith(".jpg")) {
-            extension = ".jpg";
-        }
-        return rawRequest(account.account.tier, imagePath + extension, HttpMethod.GET, account.auth.access_token, null);
-    }
-
     /**
      * This method returns significant details about the Camera, in a CameraDetails DTO.
      * WARNING: Calling this function with a Doorbell or Mini will result in a IOException (404 not found)

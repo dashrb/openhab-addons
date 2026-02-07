@@ -99,7 +99,7 @@ public class AccountHandler extends BaseBridgeHandler {
     private Gson gson;
     private static int MAX_FAILURES_BEFORE_OFFLINE = 5;
     private static String STORAGE_KEY_BLINKACCOUNT = "BlinkAccount";
-    MediaManager mediaManager = new MediaManager();
+    MediaManager mediaManager = new MediaManager(this, scheduler);
     @Nullable
     MediaServlet mediaServlet;
 
@@ -132,7 +132,6 @@ public class AccountHandler extends BaseBridgeHandler {
 
     @Override
     public void initialize() {
-        // logger.warn("WARNING: This is a pre-release version of the Blink Binding, 2026-01-08");
         AccountConfiguration newConfig = getConfigAs(AccountConfiguration.class);
         final boolean userEmailUpdated;
         String explanation = "Wait for login";
@@ -157,6 +156,21 @@ public class AccountHandler extends BaseBridgeHandler {
                 logger.warn("Failed to create media servlet", e);
             }
         }
+
+        String scheme = "http://";
+        int port = 8080;
+        String env = System.getenv("OPENHAB_HTTP_PORT");
+        if (env != null) {
+            try {
+                // make sure it's a legitimate integer port number
+                port = Integer.parseInt(env);
+            } catch (NumberFormatException e) {
+                // no need to do anything, we will use the fallback/default port 8080
+            }
+        }
+        String url = scheme + networkAddressService.getPrimaryIpv4HostAddress() + ":" + port + "/blink/account/"
+                + thing.getUID().getId() + "/media";
+        updateProperty("Recorded Videos", url);
 
         // set the thing status to UNKNOWN temporarily and let the background task decide for the real status.
         updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_PENDING, explanation);
@@ -355,6 +369,8 @@ public class AccountHandler extends BaseBridgeHandler {
         }
         this.mediaServlet = null;
 
+        this.mediaManager.cleanup();
+
         logger.debug("cleanup {}", getThing().getUID().getAsString());
     }
 
@@ -467,6 +483,7 @@ public class AccountHandler extends BaseBridgeHandler {
     void loadDevices() throws IOException {
         logger.debug("Loading devices from Blink API");
         cachedHomescreen = blinkService.getDevices(blinkAccount);
+        mediaManager.updateCameraList(cachedHomescreen);
         fireHomescreenUpdate();
     }
 
@@ -592,39 +609,6 @@ public class AccountHandler extends BaseBridgeHandler {
         throw new IOException("Unknown network");
     }
 
-    public OnOffType getBattery(CameraConfiguration camera) throws IOException {
-        BlinkAccount account = blinkAccount;
-        if (account == null) {
-            logger.error("Blink Account is not authenticated yet");
-            throw new IOException("Blink Account is not authenticated yet");
-        }
-
-        String battery = getCameraState(account, camera, false).battery;
-        if ("ok".equals(battery)) {
-            return OnOffType.OFF;
-        } else {
-            return OnOffType.ON;
-        }
-    }
-
-    public double getTemperature(CameraConfiguration camera) throws IOException {
-        BlinkAccount account = blinkAccount;
-        if (account == null) {
-            logger.error("Blink Account is not authenticated yet");
-            throw new IOException("Blink Account is not authenticated yet");
-        }
-        return getCameraState(account, camera, false).signals.temp;
-    }
-
-    public OnOffType getMotionDetection(CameraConfiguration camera, boolean refreshCache) throws IOException {
-        BlinkAccount account = blinkAccount;
-        if (account == null) {
-            logger.error("Blink Account is not authenticated yet");
-            throw new IOException("Blink Account is not authenticated yet");
-        }
-        return OnOffType.from(getCameraState(account, camera, refreshCache).enabled);
-    }
-
     public OnOffType getNetworkArmed(String networkId, boolean refreshCache) throws IOException {
         BlinkAccount account = blinkAccount;
 
@@ -651,5 +635,18 @@ public class AccountHandler extends BaseBridgeHandler {
         logger.trace("There are {} Things which are listening to events", countThings);
         return getThing().getThings().stream().map(Thing::getHandler).filter(Objects::nonNull)
                 .map(EventListener.class::cast);
+    }
+
+    /**
+     * This is effectively a pass-through function to allow the MediaManager to retrieve an
+     * image or video from the Blink servers, without itself having access to the service
+     * objects itself.
+     *
+     * @param uri of the image/video, probably from the motion event / BlinkEvent
+     * @return the raw bytes of the image / video
+     * @throws IOException
+     */
+    public byte[] getImage(String uri) throws IOException {
+        return blinkService.getImage(blinkAccount, uri);
     }
 }

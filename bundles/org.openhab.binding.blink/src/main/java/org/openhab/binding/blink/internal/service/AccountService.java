@@ -647,6 +647,13 @@ public class AccountService extends BaseBlinkApiService {
         return formBodyBuilder.toString();
     }
 
+    public byte[] getImage(@Nullable BlinkAccount account, String uri) throws IOException {
+        if (account == null || account.account == null) {
+            throw new IllegalArgumentException("This Blink Account is not authenticated yet");
+        }
+        return rawRequest(account.account.tier, uri, HttpMethod.GET, account.auth.access_token);
+    }
+
     /** OAUTH v2 PKCE functionality **/
 
     public class PkcePair {

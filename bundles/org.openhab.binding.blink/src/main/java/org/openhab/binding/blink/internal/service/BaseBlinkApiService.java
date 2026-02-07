@@ -13,6 +13,7 @@
 package org.openhab.binding.blink.internal.service;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -27,7 +28,10 @@ import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.ContentResponse;
 import org.eclipse.jetty.client.api.Request;
+import org.eclipse.jetty.client.api.Response;
+import org.eclipse.jetty.client.api.Response.ResponseListener;
 import org.eclipse.jetty.client.util.FormContentProvider;
+import org.eclipse.jetty.client.util.InputStreamResponseListener;
 import org.eclipse.jetty.client.util.StringContentProvider;
 import org.eclipse.jetty.http.HttpHeader;
 import org.eclipse.jetty.http.HttpMethod;
@@ -104,7 +108,7 @@ public class BaseBlinkApiService {
             @Nullable Map<String, String> params, @Nullable String content) throws IOException {
         String url = createUrl(tier, uri);
         try {
-            ContentResponse contentResponse = createRequestAndSend(url, method, token, params, content, true);
+            ContentResponse contentResponse = createRequestAndSend(url, method, token, params, content, true, null);
             return contentResponse.getContentAsString();
         } catch (InterruptedException | TimeoutException | ExecutionException e) {
             logger.error("Error calling Blink API. Reason: {}", e.getMessage());
@@ -119,18 +123,32 @@ public class BaseBlinkApiService {
      * @param uri the path portion of the URL
      * @param method GET/POST/PUT
      * @param token the authentication token
-     * @param params a Map of fields, to be sent as JSON in the request body
-     * @return the byte[] response of the Blink endpoint
+     * @return the byte[] response of the Blink endpoint, limited to 100MB
      * @throws IOException if there was any failure in making the call
      */
-    public byte[] rawRequest(String tier, String uri, HttpMethod method, @Nullable String token,
-            @Nullable Map<String, String> params) throws IOException {
+    public byte[] rawRequest(String tier, String uri, HttpMethod method, @Nullable String token) throws IOException {
         String url = createUrl(tier, uri);
+        byte[] largeContent;
+        InputStreamResponseListener listener = new InputStreamResponseListener();
+
         try {
-            ContentResponse contentResponse = createRequestAndSend(url, method, token, params, null, false);
-            return contentResponse.getContent();
+            final Request request = httpClient.newRequest(url).method(method.toString());
+            request.header("Authorization", "Bearer " + token);
+            request.agent(USER_AGENT);
+            logger.trace("making raw request to {}", url);
+            request.send(listener);
+            Response response = listener.get(15, TimeUnit.SECONDS);
+            if (response.getStatus() != 200) {
+                throw new IOException("Blink API Content Call unsuccessful <Status " + response.getStatus() + ">");
+            }
+            InputStream input = listener.getInputStream();
+            largeContent = input.readNBytes(100 * 1024 * 1024); // 100 MByte limit, stop there
+
+            logger.info("Received {} / {} bytes in {}", largeContent.length,
+                    response.getHeaders().get("Content-Length"), uri);
+            return largeContent;
         } catch (InterruptedException | TimeoutException | ExecutionException e) {
-            logger.error("Error calling Blink API. Reason: {}", e.getMessage());
+            logger.error("Blink API Content Call failed. Reason: {}", e.getMessage());
             throw new IOException(e);
         }
     }
@@ -151,7 +169,8 @@ public class BaseBlinkApiService {
      * The private method to assemble all the pieces and actually make the API call
      */
     private ContentResponse createRequestAndSend(String url, HttpMethod method, @Nullable String token,
-            @Nullable Map<String, String> params, @Nullable String content, boolean json)
+            @Nullable Map<String, String> params, @Nullable String content, boolean json,
+            @Nullable ResponseListener listener)
             throws InterruptedException, TimeoutException, ExecutionException, IOException {
         final Request request = httpClient.newRequest(url).method(method.toString());
 
@@ -172,6 +191,7 @@ public class BaseBlinkApiService {
             request.content(new StringContentProvider(content));
         }
         request.agent(USER_AGENT);
+        logger.trace("making request to {}", url);
         ContentResponse contentResponse = request.send();
         if (contentResponse.getStatus() != 200) {
             throw new IOException("Blink API Call unsuccessful <Status " + contentResponse.getStatus() + ">");

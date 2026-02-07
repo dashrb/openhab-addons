@@ -146,11 +146,10 @@ public class CameraHandler extends BaseThingHandler implements EventListener {
                 }
             } else if (CHANNEL_CAMERA_GETTHUMBNAIL.equals(channelUID.getId())) {
                 if (command instanceof RefreshType) {
-                    String imagePath = currentState.thumbnail; // for a new camera added to blink the thumbnail is null
-                    if (imagePath != null) {
-                        lastThumbnailPath = imagePath;
-                        updateState(CHANNEL_CAMERA_GETTHUMBNAIL,
-                                new RawType(cameraService.getThumbnail(account, imagePath), "image/jpeg"));
+                    if (currentState.thumbnail != null) {
+                        byte[] rawImage = getRawImage(currentState.thumbnail);
+                        updateState(CHANNEL_CAMERA_GETTHUMBNAIL, new RawType(rawImage, "image/jpeg"));
+                        lastThumbnailPath = currentState.thumbnail;
                     }
                 }
             } else if (CHANNEL_CAMERA_LAST_UPDATED.equals(channelUID.getId())) {
@@ -186,7 +185,8 @@ public class CameraHandler extends BaseThingHandler implements EventListener {
     }
 
     public byte[] getThumbnail() throws IOException {
-        return cameraService.getThumbnail(accountHandler.getBlinkAccount(), lastThumbnailPath);
+        byte[] rawImage = accountHandler.getMediaManager().getImage(lastThumbnailPath);
+        return rawImage;
     }
 
     public byte[] getMotionThumbnail() throws IOException {
@@ -194,7 +194,7 @@ public class CameraHandler extends BaseThingHandler implements EventListener {
         if (event == null) {
             throw new IOException("No motion thumbnail found for camera " + this.thing.getLabel());
         }
-        return cameraService.getThumbnail(accountHandler.getBlinkAccount(), event.thumbnail);
+        return accountHandler.getMediaManager().getImage(event.id);
     }
 
     @Override
@@ -217,7 +217,6 @@ public class CameraHandler extends BaseThingHandler implements EventListener {
             return;
         }
         accountHandler = (AccountHandler) bridge.getHandler();
-        accountHandler.mediaManager.registerCameraThing(config.cameraId, thing);
 
         if (thumbnailServlet == null) {
             try {
@@ -295,13 +294,14 @@ public class CameraHandler extends BaseThingHandler implements EventListener {
                 updateState(CHANNEL_CAMERA_BATTERY, OnOffType.from(!"ok".equals(myCamera.battery)));
             }
             updateState(CHANNEL_CAMERA_MOTIONDETECTION, OnOffType.from(myCamera.enabled));
+
             String imagePath = myCamera.thumbnail;
             if ((imagePath != null) && !imagePath.equals(lastThumbnailPath)) {
                 logger.debug("Loading NEW thumbnail during refresh of camera {} ({})", thing.getLabel(),
                         config.cameraId);
+                byte[] rawImage = getRawImage(imagePath);
+                updateState(CHANNEL_CAMERA_GETTHUMBNAIL, new RawType(rawImage, "image/jpeg"));
                 lastThumbnailPath = imagePath;
-                updateState(CHANNEL_CAMERA_GETTHUMBNAIL,
-                        new RawType(cameraService.getThumbnail(account, imagePath), "image/jpeg"));
             }
             updateCameraProperties(myCamera);
             if ("offline".equals(myCamera.status)) {
@@ -314,6 +314,13 @@ public class CameraHandler extends BaseThingHandler implements EventListener {
                 // TODO: figure out what changes this flag, and/or consider blocking certain
                 // outgoing commands while the camera is offline.
                 Instant when = Instant.parse(myCamera.updated_at);
+                if (myCamera.details != null) {
+                    // If it's a full camera (not a doorbell/owl), and I have these details,
+                    // then use the battery_check_time field to estimate time of death.
+                    if (myCamera.details.camera.length > 0 && myCamera.details.camera[0].battery_check_time != null) {
+                        when = Instant.parse(myCamera.details.camera[0].battery_check_time);
+                    }
+                }
                 updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
                         "Offline, according to Blink, since " + dateOnlyFormatter.format(when));
             } else {
@@ -408,9 +415,8 @@ public class CameraHandler extends BaseThingHandler implements EventListener {
             logger.debug("{}: {} motion thumbnail! {}", thing.getLabel(), word, mediaEvent.thumbnail);
             lastMotionEvent = mediaEvent;
             try {
-                updateState(CHANNEL_CAMERA_MOTIONTHUMBNAIL,
-                        new RawType(cameraService.getThumbnail(accountHandler.getBlinkAccount(), mediaEvent.thumbnail),
-                                "image/jpeg"));
+                byte[] rawImage = accountHandler.getMediaManager().getImage(mediaEvent.id);
+                updateState(CHANNEL_CAMERA_MOTIONTHUMBNAIL, new RawType(rawImage, "image/jpeg"));
             } catch (IOException e) {
                 logger.debug("Failed to update thumbnail from recent motion event from {}.", mediaEvent.thumbnail, e);
             }
@@ -448,5 +454,9 @@ public class CameraHandler extends BaseThingHandler implements EventListener {
         if (success) {
             accountHandler.getDevices(true); // trigger refresh of homescreen
         }
+    }
+
+    private byte[] getRawImage(String imagePath) throws IOException {
+        return accountHandler.getMediaManager().getImage(imagePath);
     }
 }
