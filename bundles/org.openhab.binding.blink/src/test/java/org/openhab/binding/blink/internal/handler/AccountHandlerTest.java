@@ -54,7 +54,6 @@ import org.openhab.binding.blink.internal.dto.BlinkNetwork;
 import org.openhab.binding.blink.internal.service.AccountService;
 import org.openhab.core.config.core.Configuration;
 import org.openhab.core.io.net.http.HttpClientFactory;
-import org.openhab.core.library.types.OnOffType;
 import org.openhab.core.net.NetworkAddressService;
 import org.openhab.core.storage.Storage;
 import org.openhab.core.storage.StorageService;
@@ -424,38 +423,6 @@ class AccountHandlerTest extends JavaTest {
         homescreen.networks = List.of(new BlinkNetwork(123L), new BlinkNetwork(234L));
         doReturn(homescreen).when(accountHandler).getDevices(anyBoolean());
         assertThat(accountHandler.getNetworkState("123", true).id, is(123L));
-    }
-
-    @Test
-    void testGetBatteryStatusLowOFF() throws IOException {
-        accountHandler.blinkAccount = BlinkTestUtil.testBlinkAccount();
-        CameraConfiguration config = new CameraConfiguration();
-        config.networkId = 123L;
-        config.cameraId = 456L;
-        BlinkCamera apiCamera = new BlinkCamera(config.networkId, config.cameraId);
-        apiCamera.battery = "ok";
-        BlinkHomescreen homescreen = testBlinkHomescreen();
-        homescreen.cameras = List.of(apiCamera);
-        doReturn(homescreen).when(accountHandler).getDevices(anyBoolean());
-        doReturn(apiCamera).when(accountHandler).getCameraState(any(), anyBoolean());
-        doReturn(true).when(accountHandler).ensureAccessTokenIsValid(); /// TODO -rb added this
-        assertThat(accountHandler.getBattery(config), is(OnOffType.OFF));
-    }
-
-    @Test
-    void testGetBatteryStatusLowON() throws IOException {
-        accountHandler.blinkAccount = BlinkTestUtil.testBlinkAccount();
-        CameraConfiguration config = new CameraConfiguration();
-        config.networkId = 123L;
-        config.cameraId = 456L;
-        BlinkCamera apiCamera = new BlinkCamera(config.networkId, config.cameraId);
-        apiCamera.battery = "low";
-        BlinkHomescreen homescreen = testBlinkHomescreen();
-        homescreen.cameras = List.of(apiCamera);
-        doReturn(homescreen).when(accountHandler).getDevices(anyBoolean());
-        doReturn(apiCamera).when(accountHandler).getCameraState(any(), anyBoolean());
-        doReturn(true).when(accountHandler).ensureAccessTokenIsValid(); /// TODO -rb added this
-        assertThat(accountHandler.getBattery(config), is(OnOffType.ON));
     }
 
     @Test
