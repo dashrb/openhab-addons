@@ -18,7 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jetty.client.HttpClient;
@@ -92,16 +91,6 @@ class CameraServiceTest {
         doReturn(expected).when(cameraService).apiRequest(blinkAccount.account.tier, expectedUri, HttpMethod.POST,
                 blinkAccount.auth.access_token, null, BlinkCommand.class);
         assertThat(cameraService.createThumbnail(blinkAccount, cameraConfiguration), is(expected.id));
-    }
-
-    @Test
-    void testGetThumbnail() throws IOException {
-        BlinkAccount blinkAccount = BlinkTestUtil.testBlinkAccount();
-        byte[] expectedImage = "iamanimage".getBytes(StandardCharsets.UTF_8);
-        String imagePath = "/full/path/to/thumbnail.jpg";
-        doReturn(expectedImage).when(cameraService).rawRequest(blinkAccount.account.tier, imagePath, HttpMethod.GET,
-                blinkAccount.auth.access_token, null);
-        assertThat(cameraService.getThumbnail(blinkAccount, imagePath), is(expectedImage));
     }
 
     private CameraConfiguration testCameraConfiguration() {

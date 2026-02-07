@@ -19,7 +19,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.function.Consumer;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
@@ -34,6 +33,7 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openhab.binding.blink.internal.BlinkTestUtil;
+import org.openhab.binding.blink.internal.MediaManager;
 import org.openhab.binding.blink.internal.config.CameraConfiguration;
 import org.openhab.binding.blink.internal.config.CameraConfiguration.CameraType;
 import org.openhab.binding.blink.internal.dto.BlinkAccount;
@@ -43,7 +43,6 @@ import org.openhab.core.config.core.Configuration;
 import org.openhab.core.io.net.http.HttpClientFactory;
 import org.openhab.core.library.types.OnOffType;
 import org.openhab.core.library.types.QuantityType;
-import org.openhab.core.library.types.RawType;
 import org.openhab.core.library.unit.ImperialUnits;
 import org.openhab.core.net.NetworkAddressService;
 import org.openhab.core.thing.Bridge;
@@ -81,34 +80,17 @@ public class CameraHandlerTest {
             new ThingUID(THING_TYPE_UID, CAMERA_ID), "motiondetection");
     private static final ChannelUID CHANNEL_CAMERA_SETTHUMBNAIL = new ChannelUID(
             new ThingUID(THING_TYPE_UID, CAMERA_ID), "setThumbnail");
-    private static final ChannelUID CHANNEL_CAMERA_GETTHUMBNAIL = new ChannelUID(
-            new ThingUID(THING_TYPE_UID, CAMERA_ID), "getThumbnail");
-    @NonNullByDefault({})
-    CameraHandler cameraHandler;
-    @Mock
-    @NonNullByDefault({})
-    ThingHandlerCallback callback;
+    private @NonNullByDefault({}) CameraHandler cameraHandler;
+    private @Mock @NonNullByDefault({}) ThingHandlerCallback callback;
 
-    @Spy
-    Thing thing = new ThingImpl(THING_TYPE_UID, CAMERA_ID);
-    @Mock
-    @NonNullByDefault({})
-    HttpClientFactory httpClientFactory;
-    @Mock
-    @NonNullByDefault({})
-    HttpService httpService;
-    @Mock
-    @NonNullByDefault({})
-    NetworkAddressService networkAddressService;
-    @Mock
-    @NonNullByDefault({})
-    Bridge account;
-    @Mock
-    @NonNullByDefault({})
-    AccountHandler accountHandler;
-    @Mock
-    @NonNullByDefault({})
-    CameraService cameraService;
+    private @Spy Thing thing = new ThingImpl(THING_TYPE_UID, CAMERA_ID);
+    private @Mock @NonNullByDefault({}) HttpClientFactory httpClientFactory;
+    private @Mock @NonNullByDefault({}) HttpService httpService;
+    private @Mock @NonNullByDefault({}) NetworkAddressService networkAddressService;
+    private @Mock @NonNullByDefault({}) Bridge account;
+    private @Mock @NonNullByDefault({}) AccountHandler accountHandler;
+    private @Mock @NonNullByDefault({}) CameraService cameraService;
+    private @Mock @NonNullByDefault({}) MediaManager mediaManager;
 
     private BlinkCamera getCameraTestInstance() {
         BlinkCamera cam = new BlinkCamera(123L, 567L);
@@ -167,6 +149,7 @@ public class CameraHandlerTest {
                 });
         cameraHandler.setCallback(callback);
         cameraHandler.initialize();
+        cameraHandler.accountHandler = accountHandler;
     }
 
     @Test
@@ -272,29 +255,6 @@ public class CameraHandlerTest {
     }
 
     @Test
-    void testGetThumbnailChannel() throws IOException {
-        cameraHandler.accountHandler = accountHandler;
-        BlinkAccount blinkAccount = BlinkTestUtil.testBlinkAccount();
-        doReturn(blinkAccount).when(accountHandler).getBlinkAccount();
-        CameraService cameraService = mock(CameraService.class);
-        cameraHandler.cameraService = cameraService;
-        BlinkCamera camera = this.getCameraTestInstance();
-        doReturn(camera).when(accountHandler).getCameraState(ArgumentMatchers.any(CameraConfiguration.class),
-                eq(false));
-        byte[] bytes = "expected".getBytes(StandardCharsets.UTF_8);
-        RawType expected = new RawType(bytes, "image/jpeg");
-        doReturn(bytes).when(cameraService).getThumbnail(ArgumentMatchers.any(BlinkAccount.class), anyString());
-        cameraHandler.handleCommand(CHANNEL_CAMERA_GETTHUMBNAIL, RefreshType.REFRESH);
-        CameraConfiguration handlerConfig = cameraHandler.config;
-        CameraConfiguration config = (handlerConfig == null) ? new CameraConfiguration() : handlerConfig;
-        verify(accountHandler).getCameraState(config, false);
-        verify(cameraService).getThumbnail(blinkAccount, camera.thumbnail);
-        ArgumentCaptor<State> stateCaptor = ArgumentCaptor.forClass(State.class);
-        verify(callback).stateUpdated(eq(CHANNEL_CAMERA_GETTHUMBNAIL), stateCaptor.capture());
-        assertThat(stateCaptor.getValue(), is(expected));
-    }
-
-    @Test
     void testDispose() {
         cameraHandler.cameraService = cameraService;
         cameraHandler.dispose();
@@ -303,9 +263,13 @@ public class CameraHandlerTest {
 
     @Test
     void testHandleHomescreenUpdate() throws IOException {
+        accountHandler.mediaManager = mediaManager;
         cameraHandler.accountHandler = accountHandler;
         cameraHandler.cameraService = cameraService;
+        byte[] fakeImage = new byte[] { 'f', 'a', 'k', 'e' };
         doReturn(BlinkTestUtil.testBlinkAccount()).when(accountHandler).getBlinkAccount();
+        doReturn(mediaManager).when(accountHandler).getMediaManager();
+        doReturn(fakeImage).when(mediaManager).getImage(anyString());
         BlinkCamera camera = this.getCameraTestInstance();
         doReturn(camera).when(accountHandler).getCameraState(any(), eq(false));
         doReturn(camera.details).when(cameraService).getCameraDetails(any(), any());

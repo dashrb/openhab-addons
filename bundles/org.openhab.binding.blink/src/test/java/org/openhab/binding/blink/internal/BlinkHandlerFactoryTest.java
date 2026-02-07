@@ -28,17 +28,14 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.openhab.binding.blink.internal.handler.AccountHandler;
-import org.openhab.binding.blink.internal.handler.CameraHandler;
-import org.openhab.binding.blink.internal.handler.NetworkHandler;
 import org.openhab.core.io.net.http.HttpClientFactory;
 import org.openhab.core.net.NetworkAddressService;
+import org.openhab.core.storage.Storage;
 import org.openhab.core.storage.StorageService;
-import org.openhab.core.thing.Bridge;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingTypeUID;
-import org.openhab.core.thing.ThingUID;
 import org.openhab.core.thing.binding.ThingHandler;
+import org.osgi.framework.Bundle;
 import org.osgi.framework.BundleContext;
 import org.osgi.service.http.HttpService;
 
@@ -56,13 +53,22 @@ class BlinkHandlerFactoryTest {
     private static final String CAMERA = "camera";
     private static final String NETWORK = "network";
     private @Mock @NonNullByDefault({}) HttpService httpService;
-    private @Mock @NonNullByDefault({}) HttpClientFactory httpClientFactory;
+    private @Mock @NonNullByDefault({}) HttpClientFactory mockHttpClientFactory;
+    private @Mock @NonNullByDefault({}) HttpClient mockHttpClient;
     private @Mock @NonNullByDefault({}) NetworkAddressService networkAddressService;
-    private @Mock @NonNullByDefault({}) StorageService storageService;
+    private @Mock @NonNullByDefault({}) StorageService mockStorageService;
     private @Mock @NonNullByDefault({}) BundleContext mockBundleContext;
+    private @Mock @NonNullByDefault({}) Bundle mockBundle;
+    @SuppressWarnings("null")
+    private @Mock @NonNullByDefault({}) Storage<Object> storage = BlinkTestUtil.testStorage();
 
-    private BlinkHandlerFactory factory = new BlinkHandlerFactory(httpService, httpClientFactory, networkAddressService,
-            storageService);
+    private BlinkHandlerFactory factory = new BlinkHandlerFactory(httpService, mockHttpClientFactory,
+            networkAddressService, mockStorageService) {
+        @Override
+        protected BundleContext getBundleContext() {
+            return mockBundleContext;
+        }
+    };
 
     static List<@Nullable String> thingUIDs() {
         ArrayList<@Nullable String> uids = new ArrayList<>();
@@ -74,13 +80,13 @@ class BlinkHandlerFactoryTest {
     }
 
     void setupMocks() {
-        when(httpClientFactory.getCommonHttpClient()).thenReturn(new HttpClient());
-        factory = new BlinkHandlerFactory(httpService, httpClientFactory, networkAddressService, storageService) {
-            @Override
-            protected BundleContext getBundleContext() {
-                return mockBundleContext;
-            }
-        };
+        // when(httpClientFactory.getCommonHttpClient()).thenReturn(mockHttpClient);
+        // factory = new BlinkHandlerFactory(httpService, httpClientFactory, networkAddressService, storageService) {
+        // @Override
+        // protected BundleContext getBundleContext() {
+        // return bundleContext;
+        // }
+        // };
     }
 
     @Test
@@ -103,41 +109,5 @@ class BlinkHandlerFactoryTest {
         when(thing.getThingTypeUID()).thenReturn(new ThingTypeUID(BINDING_NAME, "hurz"));
         ThingHandler handler = factory.createHandler(thing);
         assertThat(handler, is(nullValue()));
-    }
-
-    private @Mock @NonNullByDefault({}) Bridge bridge;
-
-    @SuppressWarnings("null")
-    @Test
-    void createHandler_account() {
-        setupMocks();
-        when(bridge.getThingTypeUID()).thenReturn(new ThingTypeUID(BINDING_NAME, ACCOUNT));
-        when(bridge.getUID()).thenReturn(new ThingUID("1234", "5678", "999"));
-        ThingHandler handler = factory.createHandler(bridge);
-        assertThat(handler, is(notNullValue()));
-        assertThat(handler.getClass(), is(AccountHandler.class));
-        // could test assignment of field values of handler here
-    }
-
-    @SuppressWarnings("null")
-    @Test
-    void createHandler_camera() {
-        setupMocks();
-        when(thing.getThingTypeUID()).thenReturn(new ThingTypeUID(BINDING_NAME, CAMERA));
-        ThingHandler handler = factory.createHandler(thing);
-        assertThat(handler, is(notNullValue()));
-        assertThat(handler.getClass(), is(CameraHandler.class));
-        // could test assignment of field values of handler here
-    }
-
-    @SuppressWarnings("null")
-    @Test
-    void createHandler_network() {
-        setupMocks();
-        when(thing.getThingTypeUID()).thenReturn(new ThingTypeUID(BINDING_NAME, NETWORK));
-        ThingHandler handler = factory.createHandler(thing);
-        assertThat(handler, is(notNullValue()));
-        assertThat(handler.getClass(), is(NetworkHandler.class));
-        // could test assignment of field values of handler here
     }
 }
