@@ -349,21 +349,22 @@ public class CameraHandler extends BaseThingHandler implements EventListener {
             props.put("Camera Revision", cam.revision);
         }
         props.put("Color", cam.color);
-        if (cam.signals != null) {
-            props.put("Power Source", camPowerSourceToUserString(cam.signals.battery));
-        }
         if (cam.details != null) {
             props.put("MAC Address", cam.details.camera[0].mac_address);
             props.put("Last Battery Voltage Check", cam.details.camera[0].battery_check_time);
             props.put("First Boot", cam.details.camera[0].first_boot);
             props.put("IP Address", cam.details.camera[0].last_connect.ip_address);
             props.put("Network Error Count", "" + cam.details.camera[0].last_connect.socket_failure_count);
+            props.put("Power Source", cam.details.camera[0].last_connect.ac_power ? "USB Power" : "Batteries");
         }
         updateProperties(props);
         // remove these old properties
         updateProperty("type", null);
         updateProperty("vendor", null);
         updateProperty("thumbnail", null);
+        if (cam.details == null) {
+            updateProperty("Power Source", null); // this was erroneously reported for doorbells, need to remove
+        }
     }
 
     private static String camTypeToUserString(String type) {
@@ -385,20 +386,13 @@ public class CameraHandler extends BaseThingHandler implements EventListener {
         if ("owl".equals(type)) {
             return "Mini (owl)";
         }
+        if ("hawk".equals(type)) {
+            return "Mini 2 (hawk)";
+        }
         if ("lotus".equals(type)) {
             return "Doorbell (lotus)";
         }
         return type;
-    }
-
-    private static String camPowerSourceToUserString(int src) {
-        if (src == 2) {
-            return "Internal Batteries";
-        }
-        if (src == 3) {
-            return "USB Power";
-        }
-        return "Unknown (" + src + ")";
     }
 
     @Override

@@ -108,7 +108,6 @@ public class CameraHandlerTest {
         cam.updated_at = "2026-01-16T02:14:43+00:00";
         cam.usage_rate = false;
         cam.signals = cam.new Signals();
-        cam.signals.battery = 2;
         cam.signals.lfr = 4;
         cam.signals.wifi = 5;
         cam.signals.temp = 73;

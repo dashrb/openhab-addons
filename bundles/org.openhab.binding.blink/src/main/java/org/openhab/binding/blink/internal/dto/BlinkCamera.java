@@ -48,7 +48,6 @@ public class BlinkCamera {
         public int wifi; // Channel-Advanced. A 1-5? range, 5 appears to be very strong, 2 is weak but still works
         public int lfr; // Channel-Advanced. 1-5 strength to reach the sync module
         public double temp; // Channel. In farenheit for me, probably converted to C in the app, if so configured
-        public int battery; // Property. power source: 2==internal batteries, 3==USB power
     }
 
     public class Details {
