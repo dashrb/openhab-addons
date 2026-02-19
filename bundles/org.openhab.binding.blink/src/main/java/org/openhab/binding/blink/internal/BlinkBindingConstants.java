@@ -46,6 +46,7 @@ public class BlinkBindingConstants {
     public static final String CHANNEL_CAMERA_LFR_LEVEL = "lfrLevel";
     public static final String CHANNEL_CAMERA_LFR_RSSI = "lfrRssi";
     public static final String CHANNEL_NETWORK_ARMED = "armed";
+    public static final String CHANNEL_NETWORK_WIFI_LEVEL = "wifiLevel";
     // List of property names
     public static final String PROPERTY_CAMERA_ID = "cameraId";
     public static final String PROPERTY_CAMERA_TYPE = "cameraType";

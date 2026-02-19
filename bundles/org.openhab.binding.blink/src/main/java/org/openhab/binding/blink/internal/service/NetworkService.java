@@ -18,8 +18,11 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.http.HttpMethod;
+import org.openhab.binding.blink.internal.config.NetworkConfiguration;
 import org.openhab.binding.blink.internal.dto.BlinkAccount;
 import org.openhab.binding.blink.internal.dto.BlinkCommand;
+import org.openhab.binding.blink.internal.dto.BlinkNetwork;
+import org.openhab.binding.blink.internal.dto.BlinkSyncModule;
 
 import com.google.gson.Gson;
 
@@ -52,5 +55,26 @@ public class NetworkService extends BaseBlinkApiService {
         BlinkCommand cmd = apiRequest(account.account.tier, uri, HttpMethod.POST, account.auth.access_token, null,
                 BlinkCommand.class);
         return cmd.id;
+    }
+
+    public BlinkNetwork.Details getDetails(@Nullable BlinkAccount account, NetworkConfiguration config)
+            throws IOException {
+        if (account == null || account.account == null) {
+            throw new IllegalArgumentException("This Blink Account is not authenticated yet");
+        }
+        String uri = "/network/" + config.networkId;
+        BlinkNetwork.Details details = apiRequest(account.account.tier, uri, HttpMethod.GET, account.auth.access_token,
+                null, BlinkNetwork.Details.class);
+        return details;
+    }
+
+    public BlinkSyncModule.Details getSyncModuleDetails(@Nullable BlinkAccount account, Long id) throws IOException {
+        if (account == null || account.account == null) {
+            throw new IllegalArgumentException("This Blink Account is not authenticated yet");
+        }
+        String uri = "/network/" + id + "/syncmodules";
+        BlinkSyncModule.Details details = apiRequest(account.account.tier, uri, HttpMethod.GET,
+                account.auth.access_token, null, BlinkSyncModule.Details.class);
+        return details;
     }
 }

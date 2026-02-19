@@ -335,7 +335,7 @@ public class CameraHandler extends BaseThingHandler implements EventListener {
             // although the Blink app shows dead cameras as "offline, click here to troubleshoot".
             // We will do the same--show it as OFFLINE (but we don't offer to help troubleshoot).
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-                    "Camera state could not be updated (e.g. battery dead / unplugged / deleted)");
+                    "Camera state could not be updated (e.g. battery dead / unplugged / deleted / account offline)");
         }
     }
 

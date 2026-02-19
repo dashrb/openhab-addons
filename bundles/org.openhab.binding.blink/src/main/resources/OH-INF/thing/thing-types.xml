@@ -92,10 +92,11 @@
 
 		<label>Blink Security Network</label>
 		<description>A Blink Security Network is defined by a Blink Sync Module, which has a number of cameras connected to
-			it.</description>
+			it; or a collection of doorbells and minis without a sync module.</description>
 
 		<channels>
 			<channel id="armed" typeId="armed"/>
+            <channel id="wifiLevel" typeId="wifiLevel"/>
 		</channels>
 
 		<properties>

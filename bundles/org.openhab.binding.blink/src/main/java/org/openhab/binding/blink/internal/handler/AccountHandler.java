@@ -41,11 +41,11 @@ import org.openhab.binding.blink.internal.dto.BlinkCamera;
 import org.openhab.binding.blink.internal.dto.BlinkEvents;
 import org.openhab.binding.blink.internal.dto.BlinkHomescreen;
 import org.openhab.binding.blink.internal.dto.BlinkNetwork;
+import org.openhab.binding.blink.internal.dto.BlinkSyncModule;
 import org.openhab.binding.blink.internal.service.AccountService;
 import org.openhab.binding.blink.internal.servlet.MediaServlet;
 import org.openhab.core.config.core.Configuration;
 import org.openhab.core.io.net.http.HttpClientFactory;
-import org.openhab.core.library.types.OnOffType;
 import org.openhab.core.net.NetworkAddressService;
 import org.openhab.core.storage.Storage;
 import org.openhab.core.storage.StorageService;
@@ -578,7 +578,7 @@ public class AccountHandler extends BaseBridgeHandler {
         return targetCamera;
     }
 
-    BlinkNetwork getNetworkState(String networkId, boolean refresh) throws IOException {
+    BlinkNetwork getNetworkState(Long networkId, boolean refresh) throws IOException {
         BlinkAccount account = blinkAccount;
         if (account == null) {
             logger.error("Blink Account is not authenticated yet");
@@ -587,36 +587,51 @@ public class AccountHandler extends BaseBridgeHandler {
         return getNetworkState(account, networkId, refresh);
     }
 
-    private BlinkNetwork getNetworkState(BlinkAccount account, String networkId, boolean refresh) throws IOException {
+    private BlinkNetwork getNetworkState(BlinkAccount account, Long networkId, boolean refresh) throws IOException {
         BlinkHomescreen devices = getDevices(refresh);
         if (devices == null || devices.networks == null || devices.networks.isEmpty()) {
             logger.error("Unknown network {} for account {}", networkId, account.account.account_id);
             throw new IOException("No networks found for account");
         }
-        try {
-            @SuppressWarnings("null")
-            List<BlinkNetwork> networks = devices.networks.stream().filter(n -> n.id.equals(Long.parseLong(networkId)))
-                    .collect(Collectors.toUnmodifiableList());
-            if (networks.size() == 1) {
-                return networks.get(0);
-            } else if (networks.size() > 1) {
-                throw new IOException("More than one network found with id " + networkId);
-            }
-        } catch (NumberFormatException e) {
-            logger.error("Bad network id, must be numeric: {}", networkId);
+        @SuppressWarnings("null")
+        List<BlinkNetwork> networks = devices.networks.stream().filter(n -> n.id.equals(networkId))
+                .collect(Collectors.toUnmodifiableList());
+        if (networks.size() == 1) {
+            return networks.get(0);
+        } else if (networks.size() > 1) {
+            throw new IOException("More than one network found with id " + networkId);
         }
         logger.error("Unknown network {} for account {}", networkId, account.account.account_id);
         throw new IOException("Unknown network");
     }
 
-    public OnOffType getNetworkArmed(String networkId, boolean refreshCache) throws IOException {
+    @Nullable
+    BlinkSyncModule getSyncModuleState(Long networkId) throws IOException {
         BlinkAccount account = blinkAccount;
-
         if (account == null) {
             logger.error("Blink Account is not authenticated yet");
             throw new IOException("Blink Account is not authenticated yet");
         }
-        return OnOffType.from(getNetworkState(account, networkId, refreshCache).armed);
+        return getSyncModuleState(account, networkId);
+    }
+
+    @Nullable
+    BlinkSyncModule getSyncModuleState(BlinkAccount account, Long networkId) throws IOException {
+        BlinkHomescreen devices = getDevices(false);
+        if (devices == null || devices.networks == null || devices.networks.isEmpty()) {
+            logger.error("Unknown network {} for account {}", networkId, account.account.account_id);
+            throw new IOException("No networks found for account");
+        }
+        @SuppressWarnings("null")
+        List<BlinkSyncModule> modules = devices.sync_modules.stream().filter(n -> n.network_id.equals(networkId))
+                .collect(Collectors.toUnmodifiableList());
+        if (modules.size() == 1) {
+            return modules.get(0);
+        } else if (modules.size() > 1) {
+            throw new IOException("More than one sync module found for network id " + networkId);
+        }
+        logger.debug("Note: No sync module in network {} for account {}.", networkId, account.account.account_id);
+        return null;
     }
 
     private void fireHomescreenUpdate() {

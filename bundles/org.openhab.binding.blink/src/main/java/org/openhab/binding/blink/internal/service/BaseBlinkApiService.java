@@ -89,6 +89,7 @@ public class BaseBlinkApiService {
     protected <T> T apiRequest(String tier, String uri, HttpMethod method, @Nullable String token,
             @Nullable Map<String, String> params, Class<T> classOfT) throws IOException {
         String json = request(tier, uri, method, token, params, null);
+        logger.trace("Blink API {} to URI {} for {} as json: {}", method.asString(), uri, classOfT.getName(), json);
         return gson.fromJson(json, classOfT);
     }
 

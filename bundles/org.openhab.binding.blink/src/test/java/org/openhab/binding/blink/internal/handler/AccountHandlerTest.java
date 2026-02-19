@@ -84,6 +84,7 @@ import com.google.gson.Gson;
 class AccountHandlerTest extends JavaTest {
 
     private static final String CLIENT_ID = "CLIENT_1234";
+    private static final Long NETWORK_ID = 123L;
     private static final ThingTypeUID THING_TYPE_UID = new ThingTypeUID("blink", "account");
     private static final OffsetDateTime UPDATED_AT = OffsetDateTime.of(2021, 12, 13, 14, 15, 16, 0, ZoneOffset.UTC);
     private static final long EVENT_ID = 0x00000000deadbeef;
@@ -371,18 +372,18 @@ class AccountHandlerTest extends JavaTest {
     void testNetworkStateErrorWhenNoAccountIsSet() {
         BlinkHomescreen homescreen = testBlinkHomescreen();
         doReturn(homescreen).when(accountHandler).getDevices(anyBoolean());
-        assertThrows(IOException.class, () -> accountHandler.getNetworkState("123", true));
+        assertThrows(IOException.class, () -> accountHandler.getNetworkState(NETWORK_ID, true));
     }
 
     @Test
     void testNetworkStateErrorWhenNoHomescreenOrNoNetworks() {
         accountHandler.blinkAccount = BlinkTestUtil.testBlinkAccount();
         doReturn(null).when(accountHandler).getDevices(anyBoolean());
-        IOException exception = assertThrows(IOException.class, () -> accountHandler.getNetworkState("123", true));
+        IOException exception = assertThrows(IOException.class, () -> accountHandler.getNetworkState(NETWORK_ID, true));
         assertThat(exception.getMessage(), is("No networks found for account"));
         BlinkHomescreen homescreen = testBlinkHomescreen();
         doReturn(homescreen).when(accountHandler).getDevices(anyBoolean());
-        exception = assertThrows(IOException.class, () -> accountHandler.getNetworkState("123", true));
+        exception = assertThrows(IOException.class, () -> accountHandler.getNetworkState(NETWORK_ID, true));
         assertThat(exception.getMessage(), is("No networks found for account"));
     }
 
@@ -392,7 +393,7 @@ class AccountHandlerTest extends JavaTest {
         BlinkHomescreen homescreen = testBlinkHomescreen();
         homescreen.networks = List.of(new BlinkNetwork(123L), new BlinkNetwork(234L));
         doReturn(homescreen).when(accountHandler).getDevices(anyBoolean());
-        IOException exception = assertThrows(IOException.class, () -> accountHandler.getNetworkState("789", true));
+        IOException exception = assertThrows(IOException.class, () -> accountHandler.getNetworkState(567L, true));
         assertThat(exception.getMessage(), is("Unknown network"));
     }
 
@@ -402,18 +403,8 @@ class AccountHandlerTest extends JavaTest {
         BlinkHomescreen homescreen = testBlinkHomescreen();
         homescreen.networks = List.of(new BlinkNetwork(123L), new BlinkNetwork(234L), new BlinkNetwork(234L));
         doReturn(homescreen).when(accountHandler).getDevices(anyBoolean());
-        IOException exception = assertThrows(IOException.class, () -> accountHandler.getNetworkState("234", true));
+        IOException exception = assertThrows(IOException.class, () -> accountHandler.getNetworkState(234L, true));
         assertThat(exception.getMessage(), Matchers.startsWith("More than one"));
-    }
-
-    @Test
-    void testNetworkStateErrorOnNumberFormatException() {
-        accountHandler.blinkAccount = BlinkTestUtil.testBlinkAccount();
-        BlinkHomescreen homescreen = testBlinkHomescreen();
-        homescreen.networks = List.of(new BlinkNetwork(123L), new BlinkNetwork(234L), new BlinkNetwork(234L));
-        doReturn(homescreen).when(accountHandler).getDevices(anyBoolean());
-        IOException exception = assertThrows(IOException.class, () -> accountHandler.getNetworkState("hurz", true));
-        assertThat(exception.getMessage(), Matchers.startsWith("Unknown network"));
     }
 
     @Test
@@ -422,7 +413,7 @@ class AccountHandlerTest extends JavaTest {
         BlinkHomescreen homescreen = testBlinkHomescreen();
         homescreen.networks = List.of(new BlinkNetwork(123L), new BlinkNetwork(234L));
         doReturn(homescreen).when(accountHandler).getDevices(anyBoolean());
-        assertThat(accountHandler.getNetworkState("123", true).id, is(123L));
+        assertThat(accountHandler.getNetworkState(NETWORK_ID, true).id, is(123L));
     }
 
     @Test
