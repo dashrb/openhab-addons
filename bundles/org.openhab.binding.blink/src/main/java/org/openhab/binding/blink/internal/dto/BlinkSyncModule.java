@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2010-2023 Contributors to the openHAB project
+ * Copyright (c) 2010-2026 Contributors to the openHAB project
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information.
@@ -15,7 +15,6 @@ package org.openhab.binding.blink.internal.dto;
 /**
  * The {@link BlinkSyncModule} class is the DTO for networks returned by the homescreen api call.
  *
- * @author Matthias Oesterheld - Initial contribution
  */
 public class BlinkSyncModule {
 
@@ -150,7 +149,7 @@ public class BlinkSyncModule {
     "wifi_alert_count": 0,
     "last_offline_alert": "2026-01-20T15:24:57+00:00",
     "offline_alert_count": 20,
-    "table_update_sequence": 1769676917,
+    "table_update_sequence": 1711111117,
     "local_storage_enabled": false,
     "last_backup_started": null,
     "last_backup_completed": null,
