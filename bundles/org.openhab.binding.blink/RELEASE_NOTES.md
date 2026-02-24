@@ -37,3 +37,12 @@
 1. Sync Module RSSI (Advanced)
 #### Blink Recorded Video Clips
 ![driveway camera](doc/driveway.png)
+
+
+## Changes in 5.2.0.202602242208
+
+* Added initial support for Sync Module info as part of the Network Thing, including wifi strength advanced channel
+* Fix bug where Camera thing's "Power Source" did not properly reflect use of Batteries
+* Updated README.md with more user documentation
+
+
