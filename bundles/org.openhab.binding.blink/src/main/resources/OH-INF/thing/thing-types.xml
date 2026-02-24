@@ -96,7 +96,7 @@
 
 		<channels>
 			<channel id="armed" typeId="armed"/>
-            <channel id="wifiLevel" typeId="wifiLevel"/>
+			<channel id="wifiLevel" typeId="wifiLevel"/>
 		</channels>
 
 		<properties>

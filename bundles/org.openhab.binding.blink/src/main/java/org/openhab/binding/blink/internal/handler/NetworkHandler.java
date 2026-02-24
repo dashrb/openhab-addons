@@ -154,7 +154,7 @@ public class NetworkHandler extends BaseThingHandler implements EventListener {
         }
     }
 
-    private void updateNetworkProperties() {
+    void updateNetworkProperties() {
         BlinkNetwork netState = currentNetworkState;
         if (netState != null) {
             Map<String, String> newProps = editProperties();

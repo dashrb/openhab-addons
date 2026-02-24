@@ -45,41 +45,41 @@ public class BlinkNetwork {
 
 /*-
 *
-* Sample docs:
-* {
-*   "network": {
-*     "id": 1234121,
-*     "created_at": "2023-10-16T22:09:41+00:00",
-*     "updated_at": "2025-09-16T03:00:11+00:00",
-*     "deleted_at": null,
-*     "name": "North",
-*     "network_key": "UCxxxxxxxxx6i",
-*     "description": "",
-*     "network_origin": "normal",
-*     "locale": "",
-*     "time_zone": "America/New_York",
-*     "dst": true,
-*     "ping_interval": 60,
-*     "encryption_key": null,
-*     "armed": true,
-*     "autoarm_geo_enable": false,
-*     "autoarm_time_enable": false,
-*     "lv_mode": "relay",
-*     "lfr_channel": 0,
-*     "video_destination": "server",
-*     "storage_used": 0,
-*     "storage_total": 0,
-*     "video_count": 0,
-*     "video_history_count": 4000,
-*     "sm_backup_enabled": false,
-*     "arm_string": "Armed",
-*     "busy": false,
-*     "camera_error": false,
-*     "sync_module_error": false,
-*     "feature_plan_id": null,
-*     "location_id": null,
-*     "account_id": 12345678,
-*     "status": "armed"
-*   }
-* }
+* Sample docs: the Details object looks like this:
+{
+  "network": {
+    "id": 1234121,
+    "created_at": "2023-10-16T22:09:41+00:00",
+    "updated_at": "2025-09-16T03:00:11+00:00",
+    "deleted_at": null,
+    "name": "North",
+    "network_key": "UCxxxxxxxxx6i",
+    "description": "",
+    "network_origin": "normal",
+    "locale": "",
+    "time_zone": "America/New_York",
+    "dst": true,
+    "ping_interval": 60,
+    "encryption_key": null,
+    "armed": true,
+    "autoarm_geo_enable": false,
+    "autoarm_time_enable": false,
+    "lv_mode": "relay",
+    "lfr_channel": 0,
+    "video_destination": "server",
+    "storage_used": 0,
+    "storage_total": 0,
+    "video_count": 0,
+    "video_history_count": 4000,
+    "sm_backup_enabled": false,
+    "arm_string": "Armed",
+    "busy": false,
+    "camera_error": false,
+    "sync_module_error": false,
+    "feature_plan_id": null,
+    "location_id": null,
+    "account_id": 12345678,
+    "status": "armed"
+  }
+}
 */

@@ -38,6 +38,7 @@ import org.mockito.quality.Strictness;
 import org.openhab.binding.blink.internal.BlinkTestUtil;
 import org.openhab.binding.blink.internal.dto.BlinkAccount;
 import org.openhab.binding.blink.internal.dto.BlinkNetwork;
+import org.openhab.binding.blink.internal.dto.BlinkSyncModule;
 import org.openhab.binding.blink.internal.service.NetworkService;
 import org.openhab.core.config.core.Configuration;
 import org.openhab.core.io.net.http.HttpClientFactory;
@@ -83,16 +84,32 @@ class NetworkHandlerTest {
     private @NonNullByDefault({}) Gson gson = new Gson();
 
     private final Configuration config = new Configuration();
+    private final BlinkNetwork net = new BlinkNetwork(NETWORK_ID);
+    private final BlinkSyncModule sync = new BlinkSyncModule(1234L);
 
     @BeforeEach
     void setup() throws IOException {
         config.put("networkId", NETWORK_ID);
-        BlinkNetwork net = new BlinkNetwork(NETWORK_ID);
         net.armed = true;
+        net.details = net.new Details();
+        net.details.network = net.details.new Network();
+        net.details.network.busy = false;
+        net.details.network.status = "armed";
+        net.details.network.storage_total = 0L;
+        net.details.network.storage_used = 0L;
+        net.details.network.video_destination = "server";
+        sync.network_id = NETWORK_ID;
+        sync.wifi_strength = 5;
+        sync.type = "sm1";
+        sync.details = sync.new Details();
+        sync.details.syncmodule = sync.details.new SyncModule();
+        sync.details.syncmodule.id = NETWORK_ID;
+        sync.details.syncmodule.status = "online";
         when(thing.getConfiguration()).thenReturn(config);
         when(httpClientFactory.getCommonHttpClient()).thenReturn(new HttpClient());
         doReturn(accountHandler).when(account).getHandler();
         when(accountHandler.getNetworkState(anyLong(), eq(false))).thenReturn(net);
+        when(accountHandler.getSyncModuleState(anyLong())).thenReturn(sync);
         doReturn(BlinkTestUtil.testBlinkAccount()).when(accountHandler).getBlinkAccount();
         // noinspection ConstantConditions
         networkHandler = spy(new NetworkHandler(thing, httpClientFactory, gson) {
@@ -171,8 +188,11 @@ class NetworkHandlerTest {
     @Test
     void testHandleHomescreenUpdate() throws IOException {
         networkHandler.initialize();
-        BlinkNetwork net = new BlinkNetwork(NETWORK_ID);
-        net.armed = false; // different from setup()
+        BlinkNetwork updatedNet = new BlinkNetwork(NETWORK_ID);
+        updatedNet.armed = false; // different from setup()
+        updatedNet.details = net.details;
+        updatedNet.name = net.name;
+        doNothing().when(networkHandler).updateNetworkProperties();
         doReturn(net).when(accountHandler).getNetworkState(any(), anyBoolean());
         networkHandler.handleHomescreenUpdate();
         verify(callback).stateUpdated(CHANNEL_NETWORK_ARMED, OnOffType.from(net.armed));
