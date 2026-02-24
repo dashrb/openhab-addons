@@ -90,7 +90,8 @@ Similar to the Blink Account Thing, the Blink Network Thing also has a number of
 
 | channel  | type   | description                  |
 |----------|--------|------------------------------|
-| armed  | Switch | Arms/disarms the network. Overrides schedules which are set in the app  |
+| armed    | Switch | Arms/disarms the network. Overrides schedules which are set in the app  |
+| wifiLevel | Number | (Advanced) Read-only channel, returns a 1-5 rating of how "strong" the connection to your wifi router is  |
 
 
 
@@ -153,10 +154,10 @@ Besides the channels, the current thumbnail is also provided by a servlet. The u
 | motionThumbnail | Image | Read-only channel, returns the thumbnail from the most recent motion detection event. Triggers a state change on new thumbnail  |
 | lastCommunication | DateTime | (Advanced) Read-only channel, returns the date/time of the camera's communication to the Blink servers  |
 | highUsageRate | Boolean | (Advanced) Read-only channel, returns the True(On) / False(Off) of whether Blink thinks this camera is experiencing high motion usage  |
-| wifiLevel | Number | Read-only channel, returns a 1-5 rating of how "strong" the connection to your wifi router is  |
-| wifiRssi | Number | Read-only channel, returns the Received Signal Strength Indicator measurement of communication to your wifi router, in dBm  |
-| lfrLevel | Number | Read-only channel, returns a 1-5 rating of how "strong" the connection to your sync module is  |
-| lfrRssi  | Number | Read-only channel, returns the Received Signal Strength Indicator measurement of communication to your sync module, in dBm  |
+| wifiLevel | Number | (Advanced) Read-only channel, returns a 1-5 rating of how "strong" the connection to your wifi router is  |
+| wifiRssi | Number | (Advanced) Read-only channel, returns the Received Signal Strength Indicator measurement of communication to your wifi router, in dBm  |
+| lfrLevel | Number | (Advanced) Read-only channel, returns a 1-5 rating of how "strong" the connection to your sync module is  |
+| lfrRssi  | Number | (Advanced) Read-only channel, returns the Received Signal Strength Indicator measurement of communication to your sync module, in dBm  |
 
 
 
