@@ -146,8 +146,9 @@ public class AccountService extends BaseBlinkApiService {
             logger.error("Error calling Blink API ({}). Reason: {}", url, e.getMessage());
             throw new IOException(e);
         }
-        if (contentResponse.getStatus() != 200) {
-            throw new IOException("Blink OAUTH Initial Authorize failed <Status " + contentResponse.getStatus() + ">");
+        if (contentResponse.getStatus() > 299) {
+            throw new IOException(
+                    "Blink OAUTH Initial Authorize Handshake failed (status=" + contentResponse.getStatus() + ")");
         }
     }
 
@@ -174,9 +175,9 @@ public class AccountService extends BaseBlinkApiService {
             logger.error("Error fetching Blink Sign In page. Reason: {}", e.getMessage());
             throw new IOException(e);
         }
-        if (contentResponse.getStatus() != 200) {
+        if (contentResponse.getStatus() > 299) {
             throw new IOException(
-                    "Blink OAUTH Sign In Page Request unsuccessful <Status " + contentResponse.getStatus() + ">");
+                    "Blink OAUTH Sign In Page Request unsuccessful (status=" + contentResponse.getStatus() + ")");
         }
         // This is an HTML login page and one could use an HTML parser but I chose to just RegEx the csrf token field
         String contentString = contentResponse.getContentAsString();
@@ -230,8 +231,9 @@ public class AccountService extends BaseBlinkApiService {
             // FYI: returns JSON which includes the user_id. loginStage2SendMfaCode() also provides the user_id.
             return true;
         }
-        if (contentResponse.getStatus() != 200) {
-            throw new IOException("Blink OAUTH Sign In unsuccessful <Status " + contentResponse.getStatus() + ">");
+        if (contentResponse.getStatus() > 299) {
+            throw new IOException("Blink OAUTH Sign In using user/password unsuccessful (status="
+                    + contentResponse.getStatus() + ")");
         }
         // It is not clear whether this will ever occur--I believe Blink requires MFA on every account
         logger.debug("Blink Sign In credentials accepted (no additional MFA required). Login Successful!");
@@ -306,7 +308,7 @@ public class AccountService extends BaseBlinkApiService {
                     + "client to throw an exception. Let's tell the user they likely MISTYPED their MFA Code.");
             throw new IOException("MFA Code " + mfaCode + " Failed. Check for errors, and try again.");
         }
-        if (contentResponse.getStatus() == 201) {
+        if (contentResponse.getStatus() <= 299) {
             String json = contentResponse.getContentAsString();
             logger.debug("Blink MFA Code submitted, Blink responded with {}", json);
             JsonObject top = gson.fromJson(json, JsonObject.class);
@@ -321,13 +323,13 @@ public class AccountService extends BaseBlinkApiService {
             userId = (userIdElement == null) ? "" : userIdElement.getAsString();
 
             if (status.equals("auth-completed")) {
-                logger.info("Successfully submitted Blink MFA Code");
+                logger.info("Successfully submitted Blink MFA Code (status={})", contentResponse.getStatus());
             } else {
-                logger.info("Blink MFA Code was not accepted, check MFA code");
+                logger.info("Blink MFA Code was not accepted (status={}), check MFA code", contentResponse.getStatus());
                 throw new IOException("Blink says: Incorrect MFA code provided");
             }
         } else {
-            logger.error("Unexpected status from MFA code submission. Status = {}, result = {}",
+            logger.error("Unexpected status from MFA code submission. Status={}, result={}",
                     contentResponse.getStatus(), contentResponse.getContentAsString());
             throw new IOException("MFA code submission was not successful");
         }
@@ -372,12 +374,12 @@ public class AccountService extends BaseBlinkApiService {
                 logger.debug("authorization page: the code value is {}", partiallyRedactedString(codeValue));
                 return codeValue;
             } else {
-                logger.debug("ERROR: authorization page: the query parameter 'code' was not found in the Redirect url");
+                logger.error("ERROR: authorization page: the query parameter 'code' was not found in the Redirect url");
                 throw new IOException("Authorization endpoint returned a REDIRECT location " + location
                         + ", but that URL is missing a 'code' value ");
             }
         }
-        logger.debug("ERROR: authorization page was expected to return a Redirect url, but instead returned status "
+        logger.error("ERROR: authorization page was expected to return a Redirect url, but instead returned status="
                 + status);
         throw new IOException("Authorization endpoint " + url
                 + " expected to return a REDIRECT location, but instead returned " + status);
@@ -428,13 +430,13 @@ public class AccountService extends BaseBlinkApiService {
             logger.error("Error retrieving oauth tokens from {}. Reason: {}", url, e.getMessage());
             throw new IOException(e);
         }
-        if (contentResponse.getStatus() != 200) {
-            logger.error("Error retrieving oauth tokens from {}. Status = {}", url, contentResponse.getStatus());
+        if (contentResponse.getStatus() > 299) {
+            logger.error("Error retrieving oauth tokens from {}. Status={}", url, contentResponse.getStatus());
             throw new IOException("Unable to retrieve Blink Auth Tokens from Endpoint");
         }
 
         BlinkAccount.Auth auth = parseTokenInfo(contentResponse.getContentAsString());
-        logger.info("Success! Blink Authorization Tokens Acquired");
+        logger.info("Success! Blink Authorization Tokens Acquired (status={})", contentResponse.getStatus());
 
         return auth;
     }
@@ -490,9 +492,9 @@ public class AccountService extends BaseBlinkApiService {
             logger.error("Error fetching Blink Account Tier Info page. Reason: {}", e.getMessage());
             throw new IOException(e);
         }
-        if (contentResponse.getStatus() != 200) {
+        if (contentResponse.getStatus() > 299) {
             throw new IOException(
-                    "Error fetching Blink Account Tier Info page: <Status " + contentResponse.getStatus() + ">");
+                    "Error fetching Blink Account Tier Info page (status=" + contentResponse.getStatus() + ")");
         }
         String json = contentResponse.getContentAsString();
         BlinkAccount.Account partialAcct = gson.fromJson(json, BlinkAccount.Account.class);
@@ -542,9 +544,9 @@ public class AccountService extends BaseBlinkApiService {
             logger.error("Error refreshing oauth token from {}. Reason: {}", url, e.getMessage());
             throw new IOException(e);
         }
-        if (contentResponse.getStatus() != 200) {
-            logger.error("Error retrieving oauth tokens from {}. Status = {}", url, contentResponse.getStatus());
-            throw new IOException("Unable to refresh Blink OAuth Token, status code=" + contentResponse.getStatus());
+        if (contentResponse.getStatus() > 299) {
+            logger.error("Error retrieving oauth tokens from {}. Status={}", url, contentResponse.getStatus());
+            throw new IOException("Unable to refresh Blink OAuth Token, status=" + contentResponse.getStatus());
         }
         BlinkAccount refreshedAccount = new BlinkAccount(account);
         refreshedAccount.auth = parseTokenInfo(contentResponse.getContentAsString());
