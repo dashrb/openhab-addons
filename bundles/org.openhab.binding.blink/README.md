@@ -44,11 +44,7 @@ The Account Thing has no channels.
 The Account provides a number of interesting pieces of information in the Properties.
 The most interesting property is the URL to a Recorded Videos web page. See the Recorded Videos section below.
 
-![](doc/account-info.png)
-
-
-
-
+![account info graphic](doc/account-info.png)
 
 ## Blink Network
 
@@ -67,11 +63,9 @@ setup needed).
 | ---------         | ----------------------------------|
 | networkId         | Internal blink network ID         |
 
-
 ### Properties
 
 Similar to the Blink Account Thing, the Blink Network Thing also has a number of Properties which may be interesting.
-
 
 | Property                    | Description                       |
 | --------                    | ----------------------------------|
@@ -92,10 +86,6 @@ Similar to the Blink Account Thing, the Blink Network Thing also has a number of
 |----------|--------|------------------------------|
 | armed    | Switch | Arms/disarms the network. Overrides schedules which are set in the app  |
 | wifiLevel | Number | (Advanced) Read-only channel, returns a 1-5 rating of how "strong" the connection to your wifi router is  |
-
-
-
-
 
 ## Blink Camera
 
@@ -118,7 +108,6 @@ Similar to the Blink Account Thing, the Blink Camera Thing also has a number of 
 Some properties will not appear for older cameras of cameras, or for doorbell cameras and mini cameras, as they do
 not report the same level of detail that newer / full featured camera models do.
 
-
 | Property                    | Description                       |
 | --------                    | ----------------------------------|
 | Thumbnail                   | In addition to the getThumbnail channel, the current thumbnail can be viewed at this URL      |
@@ -135,10 +124,8 @@ not report the same level of detail that newer / full featured camera models do.
 | Power Source                | Indicates if this camera is currently powered by batteries, or from a USB power supply     |
 | Network Error Count         | It is believed that this is a running counter of WiFi errors which have occurred over this camera's life     |
 
-
-
 Besides the channels, the current thumbnail is also provided by a servlet. The url is set in the thing properties.
-![](doc/thumbnail-url.png)
+![thumbnail URL shown in configuration](doc/thumbnail-url.png)
 
 ### Channels
 
@@ -159,8 +146,6 @@ Besides the channels, the current thumbnail is also provided by a servlet. The u
 | lfrLevel | Number | (Advanced) Read-only channel, returns a 1-5 rating of how "strong" the connection to your sync module is  |
 | lfrRssi  | Number | (Advanced) Read-only channel, returns the Received Signal Strength Indicator measurement of communication to your sync module, in dBm  |
 
-
-
 # Recorded Videos
 
 There is a web page served from your openhab instance where your recorded videos can be displayed.
@@ -168,9 +153,11 @@ See the URL by navigating to your Blink Account Thing, and looking under Thing P
 Open the URL in a new browser tab/window and your history of recordings will be displayed.
 (Note: support for locally stored videos is planned for a future release)
 
+## Recorded Videos Web Page Details
+
 A screenshot of this web page is shown below:
 
-![](doc/driveway.png)
+![web page screenshot shown here](doc/driveway.png)
 
 ### Mini View
 
@@ -211,11 +198,11 @@ videos. There is a lot of speculation about what corporations do with data that 
 by them. Note that using local storage instead of cloud storage does not necessarily eliminate the risk of the
 corporation accessing and retaining your videos. Since you can watch "your" videos through the app, this means
 that the Blink administrators are capable of watching "your" videos, even if they are stored on USB storage
-devices on your sync modules. I don't know whether they *DO*, but I do know that they *CAN*.
+devices on your sync modules. I don't know whether they _DO_, but I do know that they _CAN_.
 
 ### Cache Information
 
-In the lower right portion of the page, there are some statistics regarding the cache of thumbnails and 
+In the lower right portion of the page, there are some statistics regarding the cache of thumbnails and
 videos which are stored in memory in your openhab app. This cache is self-managed, with a high water mark
 of 100 MB. Once the cache exceeds this amount, some videos and thumbnails are cleared from memory, until the
 cache storage is reduced to 60% of the high water mark (i.e. 60 MB). You can temporarily clear the cache by
