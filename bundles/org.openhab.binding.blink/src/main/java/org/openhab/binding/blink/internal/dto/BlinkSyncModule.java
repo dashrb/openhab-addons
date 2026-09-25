@@ -54,7 +54,9 @@ public class BlinkSyncModule {
  *  Notes about type:
  *     "sm1" is a gen-1 sync module. It is square, has a USB-A port but cannot store videos
  *     "sm2" is a gen-2 sync module. It is also square, and has a USB-A (USB 2.0) port for 1-256 GB thumb drives
- *     "kalahari" is a gen-3 sync module, a rounded rectangle with no USB port on it; cannot store videos
+ *     "kalahari" is a gen-3 sync module Core, a rounded rectangle with no USB port on it; cannot store videos
+ *     "??" (unknown) is a Sync Module XR, a rounded square with a microSD slot for storage. Indoor only.
+ *     "monte" is a Sync Module XR+, a rounded square, w/2 (di-pole) antenna sticks (6"?), & a microSD slot. Outdoor ok.
  *
  *
  * from homescreen:
@@ -118,7 +120,28 @@ public class BlinkSyncModule {
       "local_storage_compatible": false,
       "local_storage_status": "unavailable",
       "revision": "00"
+    },
+    {
+      "id": 1234567,
+      "created_at": "2026-03-25T06:09:24+00:00",
+      "updated_at": "2026-03-28T18:43:02+00:00",
+      "onboarded": true,
+      "status": "online",
+      "name": "My Blink Sync Module",
+      "serial": "asdfasdf1234",
+      "fw_version": "26.0.6",
+      "type": "monte",
+      "subtype": "none",
+      "last_hb": "2026-07-28T21:47:07+00:00",
+      "wifi_strength": 5,
+      "network_id": 589148,
+      "enable_temp_alerts": true,
+      "local_storage_enabled": true,
+      "local_storage_compatible": false,
+      "local_storage_status": "active",
+      "revision": "01"
     }
+
 
 
  *
@@ -164,6 +187,46 @@ public class BlinkSyncModule {
     "vo9_channel": 0,
     "wifi_strength": 5
   }
+
+ * Another user (we will call him Peter) has a XR+ (weather save version of the XR, with external antennas):
+{
+  "syncmodule": {
+    "id": 123,
+    "created_at": "2026-06-25T06:09:24+00:00",
+    "updated_at": "2026-06-28T18:43:02+00:00",
+    "last_activity": "1970-01-01",
+    "name": "My Blink Sync Module",
+    "fw_version": "26.0.6",
+    "mac_address": null,
+    "ip_address": "99.111.222.123",
+    "lfr_frequency": null,
+    "serial": "GN123412341234",
+    "status": "online",
+    "onboarded": true,
+    "server": "i-xxxxx3de",
+    "last_hb": "2026-06-28T21:47:07+00:00",
+    "os_version": "7.26.4",
+    "last_wifi_alert": null,
+    "wifi_alert_count": 0,
+    "last_offline_alert": "2026-06-25T07:18:19+00:00",
+    "offline_alert_count": 1,
+    "table_update_sequence": 1711111115,
+    "local_storage_enabled": false,
+    "last_backup_started": "2026-06-28T04:16:58+00:00",
+    "last_backup_completed": "2026-06-28T04:16:59+00:00",
+    "last_backfill_completed": "2026-06-25T06:34:45+00:00",
+    "backfill_in_progress": null,
+    "ring_device_id": null,
+    "first_boot": "2026-06-25T06:09:24+00:00",
+    "feature_plan_id": null,
+    "account_id": 22222,
+    "network_id": 333333,
+    "country_id": "US",
+    "vo9_channel": 46,
+    "immi_version": 47,
+    "wifi_strength": 5
+  }
+}
 
 
 */

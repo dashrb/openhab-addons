@@ -188,6 +188,9 @@ public class NetworkHandler extends BaseThingHandler implements EventListener {
         if ("kalahari".equals(type)) {
             return "Sync Module Core (kalahari)";
         }
+        if ("monte".equals(type)) {
+            return "Sync Module XR+ (monte)";
+        }
         return "Sync Module XR? (" + type + ")";
     }
 }
