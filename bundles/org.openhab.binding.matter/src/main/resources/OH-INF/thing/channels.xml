@@ -283,12 +283,172 @@
 		</state>
 	</channel-type>
 
+	<channel-type id="thermostat-runningstate-heat">
+		<item-type>Switch</item-type>
+		<label>Heating Running State</label>
+		<description>Indicates if the thermostat is currently heating</description>
+		<category>Heating</category>
+		<tags>
+			<tag>Status</tag>
+			<tag>Heating</tag>
+		</tags>
+		<state readOnly="true"></state>
+	</channel-type>
+
+	<channel-type id="thermostat-runningstate-cool">
+		<item-type>Switch</item-type>
+		<label>Cooling Running State</label>
+		<description>Indicates if the thermostat is currently cooling</description>
+		<category>Climate</category>
+		<tags>
+			<tag>Status</tag>
+			<tag>Airconditioning</tag>
+		</tags>
+		<state readOnly="true"></state>
+	</channel-type>
+
+	<channel-type id="thermostat-runningstate-fan">
+		<item-type>Switch</item-type>
+		<label>Fan Running State</label>
+		<description>Indicates if the thermostat fan is currently running</description>
+		<category>Fan</category>
+		<tags>
+			<tag>Status</tag>
+			<tag>Ventilation</tag>
+		</tags>
+		<state readOnly="true"></state>
+	</channel-type>
+
+	<channel-type id="thermostat-runningstate-heatstage2">
+		<item-type>Switch</item-type>
+		<label>Heating Stage 2 Running State</label>
+		<description>Indicates if the thermostat is currently heating with its second stage</description>
+		<category>Heating</category>
+		<tags>
+			<tag>Status</tag>
+			<tag>Heating</tag>
+		</tags>
+		<state readOnly="true"></state>
+	</channel-type>
+
+	<channel-type id="thermostat-runningstate-coolstage2">
+		<item-type>Switch</item-type>
+		<label>Cooling Stage 2 Running State</label>
+		<description>Indicates if the thermostat is currently cooling with its second stage</description>
+		<category>Climate</category>
+		<tags>
+			<tag>Status</tag>
+			<tag>Airconditioning</tag>
+		</tags>
+		<state readOnly="true"></state>
+	</channel-type>
+
+	<channel-type id="thermostat-runningstate-fanstage2">
+		<item-type>Switch</item-type>
+		<label>Fan Stage 2 Running State</label>
+		<description>Indicates if the thermostat fan is currently running at its second stage</description>
+		<category>Fan</category>
+		<tags>
+			<tag>Status</tag>
+			<tag>Ventilation</tag>
+		</tags>
+		<state readOnly="true"></state>
+	</channel-type>
+
+	<channel-type id="thermostat-runningstate-fanstage3">
+		<item-type>Switch</item-type>
+		<label>Fan Stage 3 Running State</label>
+		<description>Indicates if the thermostat fan is currently running at its third stage</description>
+		<category>Fan</category>
+		<tags>
+			<tag>Status</tag>
+			<tag>Ventilation</tag>
+		</tags>
+		<state readOnly="true"></state>
+	</channel-type>
+
 	<channel-type id="windowcovering-lift">
 		<item-type>Rollershutter</item-type>
 		<label>Window Covering Lift</label>
 		<description>Sets the window covering level - supporting open/close and up/down type commands
 		</description>
 		<category>Blinds</category>
+	</channel-type>
+
+	<channel-type id="valve-state">
+		<item-type>Switch</item-type>
+		<label>Valve State</label>
+		<description>Opens and closes the valve and reflects its current state</description>
+		<category>Flow</category>
+		<tags>
+			<tag>Switch</tag>
+			<tag>OpenState</tag>
+		</tags>
+		<autoUpdatePolicy>veto</autoUpdatePolicy>
+	</channel-type>
+
+	<channel-type id="valve-current-state">
+		<item-type>Number</item-type>
+		<label>Valve Current State</label>
+		<description>The current state of the valve, including the transitioning state while it is opening or closing</description>
+		<category>Flow</category>
+		<state readOnly="true">
+			<options>
+				<option value="0">Closed</option>
+				<option value="1">Open</option>
+				<option value="2">Transitioning</option>
+			</options>
+		</state>
+	</channel-type>
+
+	<channel-type id="valve-target-state">
+		<item-type>Number</item-type>
+		<label>Valve Target State</label>
+		<description>The state the valve is moving toward while it is opening or closing, undefined once it has
+			settled</description>
+		<category>Flow</category>
+		<state readOnly="true">
+			<options>
+				<option value="0">Closed</option>
+				<option value="1">Open</option>
+			</options>
+		</state>
+	</channel-type>
+
+	<channel-type id="valve-level">
+		<item-type>Dimmer</item-type>
+		<label>Valve Level</label>
+		<description>Sets and reflects the valve level as a percentage, for valves that support level control</description>
+		<category>Flow</category>
+		<tags>
+			<tag>Control</tag>
+			<tag>OpenLevel</tag>
+		</tags>
+		<state min="0" max="100" pattern="%.0f %%"/>
+	</channel-type>
+
+	<channel-type id="valve-duration">
+		<item-type>Number:Time</item-type>
+		<label>Valve Open Duration</label>
+		<description>The default duration the valve remains open before automatically closing. Set to 0 to clear it, so the
+			valve remains open until it is closed.</description>
+		<category>Time</category>
+		<state pattern="%d %unit%"/>
+	</channel-type>
+
+	<channel-type id="valve-close-time">
+		<item-type>DateTime</item-type>
+		<label>Valve Close Time</label>
+		<description>The time at which the valve will automatically close, undefined when no automatic close is
+			pending</description>
+		<category>Time</category>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="valve-fault">
+		<kind>trigger</kind>
+		<label>Valve Fault</label>
+		<description>Event that fires when the valve registers a fault, with a payload containing the fault name</description>
 	</channel-type>
 
 	<channel-type id="fancontrol-fanmode">
@@ -378,6 +538,17 @@
 		<state readOnly="true"></state>
 	</channel-type>
 
+	<channel-type id="contact-statevalue">
+		<item-type>Contact</item-type>
+		<label>Contact State</label>
+		<description>Indicates a contact state, open or closed.</description>
+		<tags>
+			<tag>Status</tag>
+			<tag>OpenState</tag>
+		</tags>
+		<state readOnly="true"></state>
+	</channel-type>
+
 	<channel-type id="wifinetworkdiagnostics-rssi">
 		<item-type unitHint="dBm">Number:Power</item-type>
 		<label>Signal</label>
@@ -393,7 +564,19 @@
 	<channel-type id="doorlock-lockstate">
 		<item-type>Switch</item-type>
 		<label>Door Lock State</label>
-		<description>Locks and unlocks the door and maintains the lock state</description>
+		<description>Locks and unlocks the door and maintains the lock state. If the door lock supports unbolting, this will
+			reflect the latched state.</description>
+		<tags>
+			<tag>Status</tag>
+			<tag>LockState</tag>
+		</tags>
+		<autoUpdatePolicy>veto</autoUpdatePolicy>
+	</channel-type>
+
+	<channel-type id="doorlock-boltstate">
+		<item-type>Switch</item-type>
+		<label>Door Bolt State</label>
+		<description>Bolts and unbolts the door and maintains the bolt state.</description>
 		<tags>
 			<tag>Status</tag>
 			<tag>LockState</tag>
@@ -564,28 +747,57 @@
 		</state>
 	</channel-type>
 
-	<channel-type id="carbondioxideconcentrationmeasurement-measuredvalue">
-		<item-type unitHint="ppm">Number:Dimensionless</item-type>
-		<label>CO2 Concentration</label>
-		<description>Indicates the measured carbon dioxide concentration in parts per million (ppm).</description>
-		<category>CarbonDioxide</category>
+	<!-- Generic Concentration Measurement Channels (shared across all concentration measurement clusters) -->
+	<channel-type id="concentrationmeasurement-measuredvalue">
+		<item-type>Number:Dimensionless</item-type>
+		<label>Concentration</label>
+		<description>Indicates the measured concentration.</description>
+		<category>QualityOfService</category>
 		<tags>
 			<tag>Measurement</tag>
-			<tag>CO2</tag>
 		</tags>
-		<state pattern="%.0f ppm" readOnly="true"/>
+		<state readOnly="true"/>
 	</channel-type>
 
-	<channel-type id="carbonmonoxideconcentrationmeasurement-measuredvalue">
-		<item-type unitHint="ppm">Number:Dimensionless</item-type>
-		<label>CO Concentration</label>
-		<description>Indicates the measured carbon monoxide concentration in parts per million (ppm).</description>
-		<category>Alarm</category>
+	<channel-type id="concentrationmeasurement-levelvalue">
+		<item-type>Number</item-type>
+		<label>Concentration Level</label>
+		<description>Indicates the concentration level as an enumeration (0=Unknown, 1=Low, 2=Medium, 3=High, 4=Critical).</description>
+		<category>QualityOfService</category>
+		<tags>
+			<tag>Status</tag>
+		</tags>
+		<state readOnly="true">
+			<options>
+				<option value="0">Unknown</option>
+				<option value="1">Low</option>
+				<option value="2">Medium</option>
+				<option value="3">High</option>
+				<option value="4">Critical</option>
+			</options>
+		</state>
+	</channel-type>
+
+	<channel-type id="concentrationmeasurement-peakmeasuredvalue">
+		<item-type>Number:Dimensionless</item-type>
+		<label>Peak Concentration</label>
+		<description>Indicates the peak (maximum) concentration measured during the measurement window.</description>
+		<category>Chart</category>
 		<tags>
 			<tag>Measurement</tag>
-			<tag>CO</tag>
 		</tags>
-		<state pattern="%.0f ppm" readOnly="true"/>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<channel-type id="concentrationmeasurement-averagemeasuredvalue">
+		<item-type>Number:Dimensionless</item-type>
+		<label>Average Concentration</label>
+		<description>Indicates the average concentration measured during the measurement window.</description>
+		<category>Chart</category>
+		<tags>
+			<tag>Measurement</tag>
+		</tags>
+		<state readOnly="true"/>
 	</channel-type>
 
 	<!-- Smoke/CO Alarm Channels -->
@@ -800,6 +1012,19 @@
 		<tags>
 			<tag>Status</tag>
 			<tag>Timestamp</tag>
+		</tags>
+		<state readOnly="true"/>
+	</channel-type>
+
+	<!-- OTA Software Update Requestor Channels -->
+	<channel-type id="otasoftwareupdaterequestor-updateavailable" advanced="true">
+		<item-type>Switch</item-type>
+		<label>Update Available</label>
+		<description>Indicates if there is a firmware update available for the device. Use the "Start Firmware Update" Thing
+			action to start the update process.</description>
+		<category>Status</category>
+		<tags>
+			<tag>Status</tag>
 		</tags>
 		<state readOnly="true"/>
 	</channel-type>

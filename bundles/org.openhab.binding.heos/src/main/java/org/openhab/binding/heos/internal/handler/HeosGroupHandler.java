@@ -106,7 +106,7 @@ public class HeosGroupHandler extends HeosThingBaseHandler {
     public synchronized void initialize() {
         super.initialize();
 
-        configuration = thing.getConfiguration().as(GroupConfiguration.class);
+        configuration = getConfigAs(GroupConfiguration.class);
 
         // Prevents that initialize() is called multiple times if group goes online
         blockInitialization = true;
@@ -122,11 +122,11 @@ public class HeosGroupHandler extends HeosThingBaseHandler {
 
     @Override
     public String getId() throws HeosNotFoundException {
-        String localGroupId = this.gid;
-        if (localGroupId == null) {
+        String gid = this.gid;
+        if (gid == null) {
             throw new HeosNotFoundException();
         }
-        return localGroupId;
+        return gid;
     }
 
     public String getGroupMemberHash() {
@@ -155,10 +155,10 @@ public class HeosGroupHandler extends HeosThingBaseHandler {
             return;
         }
 
-        String localGid = this.gid;
+        String gid = this.gid;
         String eventGroupId = eventObject.getAttribute(HeosCommunicationAttribute.GROUP_ID);
         String eventPlayerId = eventObject.getAttribute(HeosCommunicationAttribute.PLAYER_ID);
-        if (localGid == null || !(localGid.equals(eventGroupId) || localGid.equals(eventPlayerId))) {
+        if (gid == null || !(gid.equals(eventGroupId) || gid.equals(eventPlayerId))) {
             return;
         }
 

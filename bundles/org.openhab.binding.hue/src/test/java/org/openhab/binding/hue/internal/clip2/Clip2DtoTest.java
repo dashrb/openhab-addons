@@ -21,7 +21,6 @@ import java.lang.reflect.Field;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.openhab.binding.hue.internal.api.dto.clip2.ActionEntry;
 import org.openhab.binding.hue.internal.api.dto.clip2.Alerts;
 import org.openhab.binding.hue.internal.api.dto.clip2.Button;
+import org.openhab.binding.hue.internal.api.dto.clip2.ColorXy;
 import org.openhab.binding.hue.internal.api.dto.clip2.ContactReport;
 import org.openhab.binding.hue.internal.api.dto.clip2.Dimming;
 import org.openhab.binding.hue.internal.api.dto.clip2.Effects;
@@ -39,6 +39,7 @@ import org.openhab.binding.hue.internal.api.dto.clip2.LightLevel;
 import org.openhab.binding.hue.internal.api.dto.clip2.MetaData;
 import org.openhab.binding.hue.internal.api.dto.clip2.MirekSchema;
 import org.openhab.binding.hue.internal.api.dto.clip2.Motion;
+import org.openhab.binding.hue.internal.api.dto.clip2.PairXy;
 import org.openhab.binding.hue.internal.api.dto.clip2.Power;
 import org.openhab.binding.hue.internal.api.dto.clip2.ProductData;
 import org.openhab.binding.hue.internal.api.dto.clip2.RelativeRotary;
@@ -47,6 +48,7 @@ import org.openhab.binding.hue.internal.api.dto.clip2.ResourceReference;
 import org.openhab.binding.hue.internal.api.dto.clip2.Resources;
 import org.openhab.binding.hue.internal.api.dto.clip2.Rotation;
 import org.openhab.binding.hue.internal.api.dto.clip2.RotationEvent;
+import org.openhab.binding.hue.internal.api.dto.clip2.Sound;
 import org.openhab.binding.hue.internal.api.dto.clip2.TamperReport;
 import org.openhab.binding.hue.internal.api.dto.clip2.Temperature;
 import org.openhab.binding.hue.internal.api.dto.clip2.TimedEffects;
@@ -54,13 +56,17 @@ import org.openhab.binding.hue.internal.api.dto.clip2.enums.ActionType;
 import org.openhab.binding.hue.internal.api.dto.clip2.enums.Archetype;
 import org.openhab.binding.hue.internal.api.dto.clip2.enums.BatteryStateType;
 import org.openhab.binding.hue.internal.api.dto.clip2.enums.ButtonEventType;
+import org.openhab.binding.hue.internal.api.dto.clip2.enums.ChimeType;
 import org.openhab.binding.hue.internal.api.dto.clip2.enums.DirectionType;
 import org.openhab.binding.hue.internal.api.dto.clip2.enums.EffectType;
 import org.openhab.binding.hue.internal.api.dto.clip2.enums.ResourceType;
 import org.openhab.binding.hue.internal.api.dto.clip2.enums.RotationEventType;
+import org.openhab.binding.hue.internal.api.dto.clip2.enums.SoundValue;
+import org.openhab.binding.hue.internal.api.dto.clip2.enums.UpdateStatusV2;
 import org.openhab.binding.hue.internal.api.dto.clip2.enums.ZigbeeStatus;
 import org.openhab.binding.hue.internal.api.dto.clip2.helper.Setters;
 import org.openhab.binding.hue.internal.api.serialization.InstantDeserializer;
+import org.openhab.binding.hue.internal.exceptions.CriticalFieldMissingException;
 import org.openhab.core.library.types.DateTimeType;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.HSBType;
@@ -72,6 +78,7 @@ import org.openhab.core.library.types.StringType;
 import org.openhab.core.types.State;
 import org.openhab.core.types.UnDefType;
 import org.openhab.core.util.ColorUtil;
+import org.openhab.core.util.ColorUtil.Gamut;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -90,27 +97,6 @@ class Clip2DtoTest {
 
     private static final Gson GSON = new GsonBuilder().registerTypeAdapter(Instant.class, new InstantDeserializer())
             .create();
-    private static final Double MINIMUM_DIMMING_LEVEL = Double.valueOf(12.34f);
-
-    // Resource types which do not yet have a test JSON payload available
-    public static final Set<ResourceType> RESOURCES_WITH_NO_JSON_TEST_CASE_YET = EnumSet.of(
-    //@formatter:off
-            ResourceType.BELL_BUTTON,
-            ResourceType.CLIP,
-            ResourceType.CONVENIENCE_AREA_MOTION,
-            ResourceType.DEVICE_SOFTWARE_UPDATE,
-            ResourceType.GROUPED_LIGHT_LEVEL,
-            ResourceType.MATTER,
-            ResourceType.MATTER_FABRIC,
-            ResourceType.MOTION_AREA_CANDIDATE,
-            ResourceType.MOTION_AREA_CONFIGURATION,
-            ResourceType.SECURITY_AREA_MOTION,
-            ResourceType.SERVICE_GROUP,
-            ResourceType.SPEAKER,
-            ResourceType.WIFI_CONNECTIVITY,
-            ResourceType.ZIGBEE_DEVICE_DISCOVERY
-    //@formatter:on
-    );
 
     /**
      * Load the test JSON payload string from a file
@@ -144,6 +130,21 @@ class Clip2DtoTest {
         assertNotNull(button);
         assertEquals(new DecimalType(2003),
                 item.getButtonEventState(Map.of("00000000-0000-0000-0000-000000000001", 2)));
+        assertEquals(new DateTimeType("2023-09-17T18:51:36.959+0000"), item.getButtonLastUpdatedState());
+    }
+
+    @Test
+    void testBellButton() {
+        String json = load(ResourceType.BELL_BUTTON.name().toLowerCase());
+        Resources resources = GSON.fromJson(json, Resources.class);
+        assertNotNull(resources);
+        List<Resource> list = resources.getResources();
+        assertNotNull(list);
+        assertEquals(1, list.size());
+        Resource item = list.get(0);
+        assertEquals(ResourceType.BELL_BUTTON, item.getType());
+        Button button = item.getButton();
+        assertNotNull(button);
         assertEquals(new DateTimeType("2023-09-17T18:51:36.959+0000"), item.getButtonLastUpdatedState());
     }
 
@@ -206,7 +207,7 @@ class Clip2DtoTest {
     }
 
     @Test
-    void testGroupedLight() {
+    void testGroupedLight() throws CriticalFieldMissingException {
         String json = load(ResourceType.GROUPED_LIGHT.name().toLowerCase());
         Resources resources = GSON.fromJson(json, Resources.class);
         assertNotNull(resources);
@@ -245,7 +246,7 @@ class Clip2DtoTest {
     }
 
     @Test
-    void testLight() {
+    void testLight() throws CriticalFieldMissingException {
         String json = load(ResourceType.LIGHT.name().toLowerCase());
         Resources resources = GSON.fromJson(json, Resources.class);
         assertNotNull(resources);
@@ -271,10 +272,20 @@ class Clip2DtoTest {
                 state = item.getBrightnessState();
                 percentState = assertInstanceOf(PercentType.class, state);
                 assertEquals(93.0, percentState.doubleValue(), 0.1);
-                assertEquals(UnDefType.UNDEF, item.getColorTemperaturePercentState());
+                ColorXy colorXY = item.getColorXy();
+                assertNotNull(colorXY);
+                PairXy pairXy = colorXY.getXY();
+                assertNotNull(pairXy);
+                double[] xy = pairXy.getXY();
+                assertNotNull(xy);
+                assertEquals(2, xy.length);
+                assertEquals(0.6367, xy[0]);
+                assertEquals(0.3503, xy[1]);
+                Gamut gamut = colorXY.getGamut();
+                assertNotNull(gamut);
                 state = item.getColorState();
                 HSBType hsbState = assertInstanceOf(HSBType.class, state);
-                double[] xy = ColorUtil.hsbToXY(hsbState);
+                xy = ColorUtil.hsbToXY(hsbState, gamut);
                 assertEquals(0.6367, xy[0], 0.01); // note: rounding errors !!
                 assertEquals(0.3503, xy[1], 0.01); // note: rounding errors !!
                 assertEquals(item.getBrightnessState(), hsbState.getBrightness());
@@ -412,21 +423,15 @@ class Clip2DtoTest {
     }
 
     @Test
-    void testResourceMerging() {
+    void testResourceMerging() throws CriticalFieldMissingException {
         // create resource one
         Resource one = new Resource(ResourceType.LIGHT).setId("AARDVARK");
         assertNotNull(one);
-        // preset the minimum dimming level
-        try {
-            Dimming dimming = new Dimming().setMinimumDimmingLevel(MINIMUM_DIMMING_LEVEL);
-            Field dimming2 = one.getClass().getDeclaredField("dimming");
-            dimming2.setAccessible(true);
-            dimming2.set(one, dimming);
-        } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
-            fail();
-        }
         Setters.setColorXy(one, HSBType.RED, null);
-        Setters.setDimming(one, PercentType.HUNDRED, null);
+        one.setBrightness(PercentType.HUNDRED);
+        ColorXy xy = one.getColorXy();
+        assertNotNull(xy);
+        xy.setGamut(ColorUtil.DEFAULT_GAMUT);
         HSBType colorState = assertInstanceOf(HSBType.class, one.getColorState());
         assertEquals(PercentType.HUNDRED, one.getBrightnessState());
         assertTrue(HSBType.RED.closeTo(colorState, 0.01));
@@ -434,15 +439,15 @@ class Clip2DtoTest {
         // switching off should change HSB and Brightness
         one.setOnOff(OnOffType.OFF);
         colorState = assertInstanceOf(HSBType.class, one.getColorState());
-        assertEquals(0, colorState.getBrightness().doubleValue(), 0.01);
+        assertEquals(PercentType.ZERO, colorState.getBrightness());
         assertEquals(PercentType.ZERO, one.getBrightnessState());
         one.setOnOff(OnOffType.ON);
 
         // setting brightness to zero should change it to the minimum dimming level
-        Setters.setDimming(one, PercentType.ZERO, null);
+        one.setBrightness(PercentType.ZERO);
         colorState = assertInstanceOf(HSBType.class, one.getColorState());
-        assertEquals(MINIMUM_DIMMING_LEVEL, colorState.getBrightness().doubleValue(), 0.01);
-        assertEquals(MINIMUM_DIMMING_LEVEL, ((PercentType) one.getBrightnessState()).doubleValue(), 0.01);
+        assertEquals(0.0, colorState.getBrightness().doubleValue(), 0.01);
+        assertEquals(0.0, ((PercentType) one.getBrightnessState()).doubleValue(), 0.01);
         one.setOnOff(OnOffType.ON);
 
         // null its Dimming field
@@ -454,17 +459,16 @@ class Clip2DtoTest {
             fail();
         }
 
-        // confirm that brightness is no longer valid, and therefore that color has also changed
+        // confirm that brightness is no longer valid, and therefore that color is also no longer valid
         assertEquals(UnDefType.NULL, one.getBrightnessState());
-        colorState = assertInstanceOf(HSBType.class, one.getColorState());
-        assertTrue((new HSBType(DecimalType.ZERO, PercentType.HUNDRED, new PercentType(50))).closeTo(colorState, 0.01));
+        assertThrows(CriticalFieldMissingException.class, () -> one.getColorState());
 
         PercentType testBrightness = new PercentType(42);
 
         // create resource two
         Resource two = new Resource(ResourceType.DEVICE).setId("ALLIGATOR");
         assertNotNull(two);
-        Setters.setDimming(two, testBrightness, null);
+        two.setBrightness(testBrightness);
         assertEquals(UnDefType.NULL, two.getColorState());
         assertEquals(testBrightness, two.getBrightnessState());
 
@@ -477,6 +481,47 @@ class Clip2DtoTest {
         assertEquals(testBrightness, one.getBrightnessState());
         colorState = assertInstanceOf(HSBType.class, one.getColorState());
         assertTrue((new HSBType(DecimalType.ZERO, PercentType.HUNDRED, testBrightness)).closeTo(colorState, 0.01));
+    }
+
+    @Test
+    void testOnOff() throws CriticalFieldMissingException {
+        Resource light = new Resource(ResourceType.LIGHT).setId("AARDVARK");
+        assertNotNull(light);
+
+        State state = light.getOnOffState();
+        assertEquals(UnDefType.NULL, state);
+
+        // pure on/off device OFF
+        light.setOnOff(OnOffType.OFF);
+        state = light.getOnOffState();
+        assertEquals(OnOffType.OFF, state);
+        state = light.getSwitchState();
+        assertEquals(OnOffType.OFF, state);
+
+        // pure on/off device OFF
+        light.setOnOff(OnOffType.ON);
+        state = light.getOnOffState();
+        assertEquals(OnOffType.ON, state);
+        state = light.getSwitchState();
+        assertEquals(OnOffType.ON, state);
+
+        // add an empty dimming field to the light
+        Dimming dimming = new Dimming();
+        light.setDimming(dimming);
+        light.setOnOff(OnOffType.ON);
+        light.setOnOff(OnOffType.OFF);
+        state = light.getOnOffState();
+        assertEquals(OnOffType.OFF, state);
+        state = light.getSwitchState();
+        assertEquals(OnOffType.OFF, state);
+
+        // add a 100% brightness value
+        dimming.setBrightness(100.0);
+        light.setOnOff(OnOffType.OFF);
+        state = light.getOnOffState();
+        assertEquals(OnOffType.OFF, state);
+        state = light.getSwitchState();
+        assertEquals(OnOffType.OFF, state);
     }
 
     @Test
@@ -504,7 +549,7 @@ class Clip2DtoTest {
     }
 
     @Test
-    void testScene() {
+    void testScene() throws CriticalFieldMissingException {
         String json = load(ResourceType.SCENE.name().toLowerCase());
         Resources resources = GSON.fromJson(json, Resources.class);
         assertNotNull(resources);
@@ -581,9 +626,10 @@ class Clip2DtoTest {
     }
 
     @Test
-    void testSetGetPureColors() {
+    void testSetGetPureColors() throws CriticalFieldMissingException {
         Resource resource = new Resource(ResourceType.LIGHT);
         assertNotNull(resource);
+        resource.setDimming(new Dimming().setBrightness(100.0));
 
         HSBType cyan = new HSBType("180,100,100");
         HSBType yellow = new HSBType("60,100,100");
@@ -591,6 +637,9 @@ class Clip2DtoTest {
 
         for (HSBType color : Set.of(HSBType.WHITE, HSBType.RED, HSBType.GREEN, HSBType.BLUE, cyan, yellow, magenta)) {
             Setters.setColorXy(resource, color, null);
+            ColorXy xy = resource.getColorXy();
+            assertNotNull(xy);
+            xy.setGamut(ColorUtil.DEFAULT_GAMUT);
             State state = resource.getColorState();
             HSBType hsbState = assertInstanceOf(HSBType.class, state);
             assertTrue(color.closeTo(hsbState, 0.01));
@@ -674,9 +723,6 @@ class Clip2DtoTest {
     void testValidJson() {
         for (ResourceType res : ResourceType.values()) {
             if (!ResourceType.SSE_TYPES.contains(res)) {
-                if (RESOURCES_WITH_NO_JSON_TEST_CASE_YET.contains(res)) {
-                    continue;
-                }
                 try {
                     String file = res.name().toLowerCase();
                     String json = load(file);
@@ -946,5 +992,121 @@ class Clip2DtoTest {
         assertTrue(enabled);
         assertEquals(OnOffType.ON, item.getMotionState());
         assertEquals(new DateTimeType("2024-12-13T11:01:25.156Z"), item.getMotionLastUpdatedState());
+    }
+
+    @Test
+    void testConvenienceAreaMotion() {
+        String json = load(ResourceType.CONVENIENCE_AREA_MOTION.name().toLowerCase());
+        Resources resources = GSON.fromJson(json, Resources.class);
+        assertNotNull(resources);
+        List<Resource> list = resources.getResources();
+        assertNotNull(list);
+        assertEquals(1, list.size());
+        Resource item = list.get(0);
+        assertEquals(ResourceType.CONVENIENCE_AREA_MOTION, item.getType());
+        Motion motion = item.getMotion();
+        assertNotNull(motion);
+        assertFalse(motion.isMotion());
+        assertEquals(new DateTimeType("2025-10-20T20:58:23.718Z"), item.getMotionLastUpdatedState());
+        assertEquals(OnOffType.OFF, item.getMotionValidState());
+        assertEquals(OnOffType.ON, item.getEnabledState());
+    }
+
+    @Test
+    void testSecurityAreaMotion() {
+        String json = load(ResourceType.SECURITY_AREA_MOTION.name().toLowerCase());
+        Resources resources = GSON.fromJson(json, Resources.class);
+        assertNotNull(resources);
+        List<Resource> list = resources.getResources();
+        assertNotNull(list);
+        assertEquals(1, list.size());
+        Resource item = list.get(0);
+        assertEquals(ResourceType.SECURITY_AREA_MOTION, item.getType());
+        Motion motion = item.getMotion();
+        assertNotNull(motion);
+        assertFalse(motion.isMotion());
+        assertEquals(new DateTimeType("2025-10-20T16:47:14.733Z"), item.getMotionLastUpdatedState());
+        assertEquals(OnOffType.OFF, item.getMotionValidState());
+        assertEquals(OnOffType.ON, item.getEnabledState());
+    }
+
+    @Test
+    void testMotionAreaConfiguration() {
+        String json = load(ResourceType.MOTION_AREA_CONFIGURATION.name().toLowerCase());
+        Resources resources = GSON.fromJson(json, Resources.class);
+        assertNotNull(resources);
+        List<Resource> list = resources.getResources();
+        assertNotNull(list);
+        assertEquals(1, list.size());
+        Resource item = list.get(0);
+        assertEquals(ResourceType.MOTION_AREA_CONFIGURATION, item.getType());
+        List<ResourceReference> serviceReferences = item.getServiceReferences();
+        assertEquals(2, serviceReferences.size());
+        ResourceReference resourceReference = serviceReferences.stream()
+                .filter(sr -> sr.getType() == ResourceType.CONVENIENCE_AREA_MOTION).findFirst().orElse(null);
+        assertNotNull(resourceReference);
+        resourceReference = serviceReferences.stream().filter(sr -> sr.getType() == ResourceType.SECURITY_AREA_MOTION)
+                .findFirst().orElse(null);
+        assertNotNull(resourceReference);
+    }
+
+    @Test
+    void testSpeaker() {
+        String json = load(ResourceType.SPEAKER.name().toLowerCase());
+        Resources resources = GSON.fromJson(json, Resources.class);
+        assertNotNull(resources);
+        List<Resource> list = resources.getResources();
+        assertNotNull(list);
+        assertEquals(1, list.size());
+        Resource item = list.get(0);
+        assertEquals(ResourceType.SPEAKER, item.getType());
+        State state = item.getSoundMuteState();
+        assertEquals(OnOffType.OFF, state);
+        state = item.getSoundState(ChimeType.ALARM);
+        assertEquals(new StringType("NO_SOUND"), state);
+        state = item.getSoundState(ChimeType.ALERT);
+        assertEquals(new StringType("NO_SOUND"), state);
+        state = item.getSoundState(ChimeType.CHIME);
+        assertEquals(new StringType("NO_SOUND"), state);
+        Sound sound = item.getSound(ChimeType.CHIME);
+        assertNotNull(sound);
+        assertEquals(SoundValue.NO_SOUND, sound.getSoundValue());
+        List<SoundValue> soundValues = sound.getSoundValues();
+        assertNotNull(soundValues);
+        assertEquals(12, soundValues.size());
+    }
+
+    @Test
+    void testServiceGroup() {
+        String json = load(ResourceType.SERVICE_GROUP.name().toLowerCase());
+        Resources resources = GSON.fromJson(json, Resources.class);
+        assertNotNull(resources);
+        List<Resource> list = resources.getResources();
+        assertNotNull(list);
+        assertEquals(1, list.size());
+        Resource item = list.get(0);
+        assertEquals(ResourceType.SERVICE_GROUP, item.getType());
+        assertEquals("Sensor group", item.getName());
+        List<ResourceReference> services = item.getServiceReferences();
+        assertNotNull(services);
+        assertEquals(2, services.size());
+        List<ResourceReference> children = item.getChildren();
+        assertNotNull(children);
+        assertEquals(4, children.size());
+    }
+
+    @Test
+    void testDeviceSoftwareUpdate() {
+        String json = load(ResourceType.DEVICE_SOFTWARE_UPDATE.name().toLowerCase());
+        Resources resources = GSON.fromJson(json, Resources.class);
+        assertNotNull(resources);
+        List<Resource> list = resources.getResources();
+        assertNotNull(list);
+        assertEquals(1, list.size());
+        Resource item = list.get(0);
+        assertEquals(ResourceType.DEVICE_SOFTWARE_UPDATE, item.getType());
+        UpdateStatusV2 status = item.getUpdateStatus();
+        assertNotNull(status);
+        assertEquals(UpdateStatusV2.NO_UPDATE, status);
     }
 }

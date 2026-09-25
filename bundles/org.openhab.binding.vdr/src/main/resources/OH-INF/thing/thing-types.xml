@@ -11,6 +11,7 @@
 			<channel id="power" typeId="system.power"/>
 			<channel id="channel" typeId="vdrChannel"/>
 			<channel id="channelName" typeId="vdrChannelName"/>
+			<channel id="audio" typeId="vdrAudioTrack"/>
 			<channel id="volume" typeId="system.volume"/>
 			<channel id="recording" typeId="vdrRecordingActive"/>
 			<channel id="diskUsage" typeId="vdrDiskUsage"/>
@@ -20,7 +21,7 @@
 				<label>Current EPG Event Title</label>
 			</channel>
 			<channel id="currentEventSubTitle" typeId="vdrEventSubTitle">
-				<label>Current EPG Event Sub Title</label>
+				<label>Current EPG Event Subtitle</label>
 			</channel>
 			<channel id="currentEventBegin" typeId="vdrEventBegin">
 				<label>Current EPG Event Begin</label>
@@ -35,7 +36,7 @@
 				<label>Next EPG Event Title</label>
 			</channel>
 			<channel id="nextEventSubTitle" typeId="vdrEventSubTitle">
-				<label>Next EPG Event Sub Title</label>
+				<label>Next EPG Event Subtitle</label>
 			</channel>
 			<channel id="nextEventBegin" typeId="vdrEventBegin">
 				<label>Next EPG Event Begin</label>
@@ -50,6 +51,7 @@
 
 		<properties>
 			<property name="version">VDR Version</property>
+			<property name="thingTypeVersion">1</property>
 		</properties>
 
 		<config-description>
@@ -94,6 +96,12 @@
 		<label>Channel Name</label>
 		<description>Current Channel Name</description>
 		<state readOnly="true"/>
+	</channel-type>
+	<channel-type id="vdrAudioTrack">
+		<item-type>Number</item-type>
+		<label>Audio Track</label>
+		<description>Current Audio Track</description>
+		<state readOnly="false" pattern="%d"/>
 	</channel-type>
 	<channel-type id="vdrRecordingActive">
 		<item-type>Switch</item-type>
@@ -180,8 +188,8 @@
 	</channel-type>
 	<channel-type id="vdrEventSubTitle">
 		<item-type>String</item-type>
-		<label>Event Sub Title</label>
-		<description>Sub Title of EPG Event</description>
+		<label>Event Subtitle</label>
+		<description>Subtitle of EPG Event</description>
 		<state readOnly="true"/>
 	</channel-type>
 	<channel-type id="vdrEventBegin">

@@ -312,7 +312,7 @@ public class AirqHandler extends BaseThingHandler {
 
     @Override
     public void initialize() {
-        config = getThing().getConfiguration().as(AirqConfiguration.class);
+        config = getConfigAs(AirqConfiguration.class);
         updateStatus(ThingStatus.UNKNOWN);
 
         pollingJob = scheduler.scheduleWithFixedDelay(this::pollData, 0, POLLING_PERIOD_DATA_MSEC,
@@ -474,6 +474,7 @@ public class AirqHandler extends BaseThingHandler {
                 processType(decObj, "pm2_5", "fineDustConc02_5", "pair");
                 processType(decObj, "pm10", "fineDustConc10", "pair");
                 processType(decObj, "pressure", "pressure", "pair");
+                processType(decObj, "radon", "radon", "pair");
                 processType(decObj, "so2", "so2", "pair");
                 processType(decObj, "sound", "sound", "pairDB");
                 processType(decObj, "temperature", "temperature", "pair");

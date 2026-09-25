@@ -19,14 +19,14 @@ import java.util.Dictionary;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import javax.jmdns.ServiceInfo;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.binding.hue.internal.HueBridgeModel;
 import org.openhab.binding.hue.internal.connection.Clip2Bridge;
+import org.openhab.core.config.core.ConfigParser;
 import org.openhab.core.config.discovery.DiscoveryResult;
 import org.openhab.core.config.discovery.DiscoveryResultBuilder;
 import org.openhab.core.config.discovery.DiscoveryService;
@@ -56,26 +56,6 @@ import org.slf4j.LoggerFactory;
 @NonNullByDefault
 public class HueBridgeMDNSDiscoveryParticipant implements MDNSDiscoveryParticipant {
 
-    private static final Pattern BSB_MODEL_ID_PATTERN = Pattern.compile("^BSB(\\d{3})$");
-
-    /**
-     * Checks if the given model ID is a BSB model and if its version is 003 or above.
-     *
-     * @param modelId the model ID to check
-     * @return true if the model ID is a BSB model with version 003 or above, false otherwise
-     */
-    public static boolean modelIsOrAboveBSB003(@Nullable String modelId) {
-        if (modelId == null) {
-            return false;
-        }
-        Matcher matcher = BSB_MODEL_ID_PATTERN.matcher(modelId);
-        if (!matcher.matches()) {
-            return false;
-        }
-        int version = Integer.parseInt(matcher.group(1));
-        return version >= 3;
-    }
-
     private static final String SERVICE_TYPE = "_hue._tcp.local.";
     private static final String MDNS_PROPERTY_BRIDGE_ID = "bridgeid";
     private static final String MDNS_PROPERTY_MODEL_ID = "modelid";
@@ -84,7 +64,7 @@ public class HueBridgeMDNSDiscoveryParticipant implements MDNSDiscoveryParticipa
     protected final ThingRegistry thingRegistry;
 
     private long removalGracePeriod = 0L;
-    private boolean isAutoDiscoveryEnabled = true;
+    private volatile boolean isAutoDiscoveryEnabled = true;
 
     @Activate
     public HueBridgeMDNSDiscoveryParticipant(final @Reference ThingRegistry thingRegistry) {
@@ -103,11 +83,9 @@ public class HueBridgeMDNSDiscoveryParticipant implements MDNSDiscoveryParticipa
 
     private void activateOrModifyService(ComponentContext componentContext) {
         Dictionary<String, @Nullable Object> properties = componentContext.getProperties();
-        String autoDiscoveryPropertyValue = (String) properties
-                .get(DiscoveryService.CONFIG_PROPERTY_BACKGROUND_DISCOVERY);
-        if (autoDiscoveryPropertyValue != null && !autoDiscoveryPropertyValue.isBlank()) {
-            isAutoDiscoveryEnabled = Boolean.valueOf(autoDiscoveryPropertyValue);
-        }
+        isAutoDiscoveryEnabled = ConfigParser.valueAsOrElse(
+                properties.get(DiscoveryService.CONFIG_PROPERTY_BACKGROUND_DISCOVERY), Boolean.class,
+                isAutoDiscoveryEnabled);
         String removalGracePeriodPropertyValue = (String) properties.get(REMOVAL_GRACE_PERIOD);
         if (removalGracePeriodPropertyValue != null && !removalGracePeriodPropertyValue.isBlank()) {
             try {
@@ -155,8 +133,7 @@ public class HueBridgeMDNSDiscoveryParticipant implements MDNSDiscoveryParticipa
                         .withProperty(HOST, host) //
                         .withProperty(Thing.PROPERTY_MODEL_ID, service.getPropertyString(MDNS_PROPERTY_MODEL_ID)) //
                         .withProperty(Thing.PROPERTY_SERIAL_NUMBER, serial.toLowerCase()) //
-                        .withRepresentationProperty(Thing.PROPERTY_SERIAL_NUMBER) //
-                        .withTTL(120L);
+                        .withRepresentationProperty(Thing.PROPERTY_SERIAL_NUMBER);
 
                 if (Objects.nonNull(legacyThingUID)) {
                     builder = builder.withProperty(PROPERTY_LEGACY_THING_UID, legacyThingUID);
@@ -183,10 +160,19 @@ public class HueBridgeMDNSDiscoveryParticipant implements MDNSDiscoveryParticipa
         String id = service.getPropertyString(MDNS_PROPERTY_BRIDGE_ID);
         if (id != null && !id.isBlank()) {
             id = id.toLowerCase();
-            if (modelIsOrAboveBSB003(service.getPropertyString(MDNS_PROPERTY_MODEL_ID))) {
+            String modelId = service.getPropertyString(MDNS_PROPERTY_MODEL_ID);
+            int generation = modelId != null ? HueBridgeModel.getGeneration(modelId) : 0;
+            if (generation >= 3) {
                 return new ThingUID(THING_TYPE_BRIDGE_API2, id);
+            } else if (generation == 1) {
+                // The original Hue Bridge (round white) does not support CLIP 2,
+                // so we can directly return the ThingUID for the original bridge without further checks.
+                return new ThingUID(THING_TYPE_BRIDGE, id);
             }
             try {
+                // For square white bridges of generation 2, we need to check if CLIP 2 is supported
+                // to determine the correct ThingTypeUID. This is because some bridges could still
+                // be running older firmware without CLIP 2 support.
                 return Clip2Bridge.isClip2Supported(service.getHostAddresses()[0])
                         ? new ThingUID(THING_TYPE_BRIDGE_API2, id)
                         : new ThingUID(THING_TYPE_BRIDGE, id);

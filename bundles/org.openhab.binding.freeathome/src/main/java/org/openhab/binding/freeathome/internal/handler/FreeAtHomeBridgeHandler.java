@@ -17,6 +17,7 @@ import java.io.StringReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
@@ -45,10 +46,10 @@ import org.eclipse.jetty.client.util.BasicAuthentication;
 import org.eclipse.jetty.client.util.StringContentProvider;
 import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.http.HttpStatus;
-import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.StatusCode;
 import org.eclipse.jetty.websocket.api.WebSocketListener;
+import org.eclipse.jetty.websocket.api.WebSocketPingPongListener;
 import org.eclipse.jetty.websocket.client.ClientUpgradeRequest;
 import org.eclipse.jetty.websocket.client.WebSocketClient;
 import org.openhab.binding.freeathome.internal.FreeAtHomeDiscoveryService;
@@ -70,6 +71,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
+import com.google.gson.Strictness;
 import com.google.gson.stream.JsonReader;
 
 /**
@@ -80,7 +82,7 @@ import com.google.gson.stream.JsonReader;
  *
  */
 @NonNullByDefault
-public class FreeAtHomeBridgeHandler extends BaseBridgeHandler implements WebSocketListener {
+public class FreeAtHomeBridgeHandler extends BaseBridgeHandler implements WebSocketListener, WebSocketPingPongListener {
 
     private final Logger logger = LoggerFactory.getLogger(FreeAtHomeBridgeHandler.class);
 
@@ -90,7 +92,6 @@ public class FreeAtHomeBridgeHandler extends BaseBridgeHandler implements WebSoc
     private final HttpClient httpClient;
     private @Nullable WebSocketClient websocketClient = null;
     private final FreeAtHomeWebsocketMonitorThread socketMonitor = new FreeAtHomeWebsocketMonitorThread();
-    private @Nullable QueuedThreadPool jettyThreadPool = null;
     private volatile @Nullable Session websocketSession = null;
 
     private final String sysApUID = "00000000-0000-0000-0000-000000000000";
@@ -152,17 +153,16 @@ public class FreeAtHomeBridgeHandler extends BaseBridgeHandler implements WebSoc
 
             ContentResponse response = req.send();
 
-            if (response.getStatus() != 200) {
+            if (response.getStatus() != HttpStatus.OK_200) {
                 logger.warn("HTTP request failed in fetchSysapVersion with status [{}] and reason [{}]",
                         response.getStatus(), response.getReason());
                 return false;
             }
 
-            String configString = new String(response.getContent());
+            String configString = response.getContentAsString();
 
             JsonReader reader = new JsonReader(new StringReader(configString));
-            reader.setLenient(true); // Deprecated: use reader.setStrictness(Strictness.LENIENT) in future. Kept for
-                                     // backward compatibility with older library versions.
+            reader.setStrictness(Strictness.LENIENT);
             JsonElement jsonTree = JsonParser.parseReader(reader);
 
             if (!jsonTree.isJsonObject()) {
@@ -236,7 +236,7 @@ public class FreeAtHomeBridgeHandler extends BaseBridgeHandler implements WebSoc
             ContentResponse response = req.send();
 
             // Get component List
-            String componentListString = new String(response.getContent());
+            String componentListString = response.getContentAsString();
 
             JsonElement jsonTree = JsonParser.parseString(componentListString);
 
@@ -309,17 +309,11 @@ public class FreeAtHomeBridgeHandler extends BaseBridgeHandler implements WebSoc
             response = req.send();
 
             // Get component List
-            String deviceString = new String(response.getContent());
+            String deviceString = response.getContentAsString();
 
             JsonReader reader = new JsonReader(new StringReader(deviceString));
-            reader.setLenient(true); // Deprecated: use reader.setStrictness(Strictness.LENIENT) in future. Kept for
-                                     // backward compatibility with older library versions.
+            reader.setStrictness(Strictness.LENIENT);
             JsonElement jsonTree = JsonParser.parseReader(reader);
-
-            if (!jsonTree.isJsonObject()) {
-                throw new FreeAtHomeHttpCommunicationException(0,
-                        "No data is received by getDatapoint with the URL [ " + url + " ]");
-            }
 
             if (!jsonTree.isJsonObject()) {
                 throw new FreeAtHomeHttpCommunicationException(0,
@@ -386,15 +380,16 @@ public class FreeAtHomeBridgeHandler extends BaseBridgeHandler implements WebSoc
 
             ContentResponse response = req.send();
 
-            if (response.getStatus() != 200) {
+            if (response.getStatus() != HttpStatus.OK_200) {
+                logger.warn("HTTP request failed in getDatapoint with status [{}] and reason [{}]",
+                        response.getStatus(), response.getReason());
                 throw new FreeAtHomeHttpCommunicationException(response.getStatus(), response.getReason());
             }
 
-            String deviceString = new String(response.getContent());
+            String deviceString = response.getContentAsString();
 
             JsonReader reader = new JsonReader(new StringReader(deviceString));
-            reader.setLenient(true); // Deprecated: use reader.setStrictness(Strictness.LENIENT) in future. Kept for
-                                     // backward compatibility with older library versions.
+            reader.setStrictness(Strictness.LENIENT);
             JsonElement jsonTree = JsonParser.parseReader(reader);
 
             if (!jsonTree.isJsonObject()) {
@@ -459,7 +454,7 @@ public class FreeAtHomeBridgeHandler extends BaseBridgeHandler implements WebSoc
 
             ContentResponse response = req.send();
 
-            if (response.getStatus() != 200) {
+            if (response.getStatus() != HttpStatus.OK_200) {
                 throw new FreeAtHomeHttpCommunicationException(response.getStatus(), response.getReason());
             }
         } catch (InterruptedException e) {
@@ -485,8 +480,7 @@ public class FreeAtHomeBridgeHandler extends BaseBridgeHandler implements WebSoc
      */
     public void setDatapointOnWebsocketFeedback(String receivedText) {
         JsonReader reader = new JsonReader(new StringReader(receivedText));
-        reader.setLenient(true); // Deprecated: use reader.setStrictness(Strictness.LENIENT) in future. Kept for
-                                 // backward compatibility with older library versions.
+        reader.setStrictness(Strictness.LENIENT);
         JsonElement jsonTree = JsonParser.parseReader(reader);
 
         // check the output
@@ -522,8 +516,7 @@ public class FreeAtHomeBridgeHandler extends BaseBridgeHandler implements WebSoc
 
     public void markDeviceRemovedOnWebsocketFeedback(String receivedText) {
         JsonReader reader = new JsonReader(new StringReader(receivedText));
-        reader.setLenient(true); // Deprecated: use reader.setStrictness(Strictness.LENIENT) in future. Kept for
-                                 // backward compatibility with older library versions.
+        reader.setStrictness(Strictness.LENIENT);
         JsonElement jsonTree = JsonParser.parseReader(reader);
 
         // check the output
@@ -549,8 +542,8 @@ public class FreeAtHomeBridgeHandler extends BaseBridgeHandler implements WebSoc
         mapEventListeners.put(deviceID, deviceHandler);
     }
 
-    public void unregisterDeviceStateListener(String deviceID) {
-        mapEventListeners.remove(deviceID);
+    public void unregisterDeviceStateListener(String deviceID, FreeAtHomeDeviceHandler listener) {
+        mapEventListeners.remove(deviceID, listener);
     }
 
     /**
@@ -613,7 +606,7 @@ public class FreeAtHomeBridgeHandler extends BaseBridgeHandler implements WebSoc
     /**
      * Method to connect the WebSocket session.
      * Attempts to establish a WebSocket connection to the SysAP and handles authentication.
-     * 
+     *
      * @return true if the connection attempt is initiated successfully, false otherwise
      */
     public boolean connectWebsocketSession() {
@@ -629,7 +622,7 @@ public class FreeAtHomeBridgeHandler extends BaseBridgeHandler implements WebSoc
         Base64.Encoder bas64Encoder = Base64.getEncoder();
 
         // Encode the authentication string to Base64
-        String authStringEnc = bas64Encoder.encodeToString(authString.getBytes());
+        String authStringEnc = bas64Encoder.encodeToString(authString.getBytes(StandardCharsets.UTF_8));
 
         // Set the Authorization header value
         authField = "Basic " + authStringEnc;
@@ -693,17 +686,6 @@ public class FreeAtHomeBridgeHandler extends BaseBridgeHandler implements WebSoc
     public void closeWebSocketConnection() {
         socketMonitor.interrupt();
 
-        QueuedThreadPool localThreadPool = jettyThreadPool;
-
-        if (localThreadPool != null) {
-            try {
-                localThreadPool.stop();
-            } catch (Exception e1) {
-                logger.debug("Error by closing Websocket connection [{}]", e1.getMessage());
-            }
-            jettyThreadPool = null;
-        }
-
         WebSocketClient localWebSocketClient = websocketClient;
 
         if (localWebSocketClient != null) {
@@ -718,7 +700,7 @@ public class FreeAtHomeBridgeHandler extends BaseBridgeHandler implements WebSoc
 
     /**
      * Opens a WebSocket connection to the free@home system.
-     * This method initializes the thread pool and WebSocket client if they don't exist.
+     * This method creates the WebSocket client if it does not exist yet.
      *
      * @return true if the WebSocket connection is successfully opened or already exists, false otherwise.
      */
@@ -728,53 +710,21 @@ public class FreeAtHomeBridgeHandler extends BaseBridgeHandler implements WebSoc
         try {
             logger.debug("Current Jetty version: {}", org.eclipse.jetty.util.Jetty.VERSION);
 
-            QueuedThreadPool localThreadPool = jettyThreadPool;
-
-            if (localThreadPool == null) {
-                // Create a new thread pool if it doesn't exist
-                jettyThreadPool = new QueuedThreadPool();
-                localThreadPool = jettyThreadPool;
-
-                if (localThreadPool != null) {
-                    localThreadPool.setName(FreeAtHomeBridgeHandler.class.getSimpleName());
-                    localThreadPool.setDaemon(true);
-                    localThreadPool.setStopTimeout(0);
-                } else {
-                    throw new IllegalStateException("Failed to create QueuedThreadPool");
-                }
-            }
-
             WebSocketClient localWebSocketClient = websocketClient;
 
             if (localWebSocketClient == null) {
-                // Create a new WebSocket client if it doesn't exist
+                // A client built on an HttpClient runs on that client's executor. Handing it one of its
+                // own would replace the executor of a client that has already been started.
                 logger.debug("Creating new WebSocketClient with Jetty version {}",
                         org.eclipse.jetty.util.Jetty.VERSION);
-                localWebSocketClient = new WebSocketClient(httpClient);
-                websocketClient = localWebSocketClient;
-
-                if (localWebSocketClient != null) {
-                    // Set the executor immediately after creation, before any start
-                    localWebSocketClient.setExecutor(localThreadPool);
-                    // Do not start the client here; let connectWebsocketSession() handle it, see
-                    // localWebsocketClient.start() there
-                    socketMonitor.start();
-                    ret = true;
-                } else {
-                    throw new IllegalStateException("WebSocketClient initialization failed");
-                }
-            } else {
-                if (localWebSocketClient.isStarted()) {
-                    logger.debug("WebSocketClient is already started, skipping setExecutor()");
-                    ret = true; // Client exists and is running, no need to reconfigure
-                } else {
-                    // Set executor only if the client is not yet started
-                    logger.debug("WebSocketClient exists but not started, setting executor");
-                    localWebSocketClient.setExecutor(localThreadPool);
-                    socketMonitor.start();
-                    ret = true;
-                }
+                websocketClient = new WebSocketClient(httpClient);
+                // Do not start the client here; let connectWebsocketSession() handle it, see
+                // localWebsocketClient.start() there
+                socketMonitor.start();
+            } else if (!localWebSocketClient.isStarted()) {
+                socketMonitor.start();
             }
+            ret = true;
         } catch (Exception e) {
             logger.warn("Error in openWebSocketConnection: {}", e.getMessage());
             ret = false;
@@ -849,7 +799,6 @@ public class FreeAtHomeBridgeHandler extends BaseBridgeHandler implements WebSoc
     /**
      * Method to dispose
      */
-    @SuppressWarnings("null")
     @Override
     public void dispose() {
         // let run out the thread
@@ -858,17 +807,6 @@ public class FreeAtHomeBridgeHandler extends BaseBridgeHandler implements WebSoc
 
         logger.debug("Closing WebSocket connection");
         closeWebSocketConnection();
-
-        if (jettyThreadPool != null) {
-            try {
-                logger.debug("Stopping Jetty thread pool");
-                jettyThreadPool.stop();
-            } catch (Exception e) {
-                logger.warn("Error stopping Jetty thread pool: {}", e.getMessage());
-            } finally {
-                jettyThreadPool = null;
-            }
-        }
     }
 
     /**
@@ -1031,7 +969,7 @@ public class FreeAtHomeBridgeHandler extends BaseBridgeHandler implements WebSoc
         Session localSession = websocketSession;
 
         if (localSession != null) {
-            localSession.getRemote().sendPing(ByteBuffer.wrap("ping".getBytes()));
+            localSession.getRemote().sendPing(ByteBuffer.wrap("ping".getBytes(StandardCharsets.UTF_8)));
         }
     }
 
@@ -1152,6 +1090,18 @@ public class FreeAtHomeBridgeHandler extends BaseBridgeHandler implements WebSoc
     @NonNullByDefault({})
     public void onWebSocketBinary(byte[] payload, int offset, int len) {
         logger.warn("Binary message received via websocket - It shall not happen with the free@home SysAp");
+    }
+
+    @Override
+    @NonNullByDefault({})
+    public void onWebSocketPong(ByteBuffer payload) {
+        lastReceivedTime = System.currentTimeMillis();
+        logger.debug("WebSocket pong received");
+    }
+
+    @Override
+    @NonNullByDefault({})
+    public void onWebSocketPing(ByteBuffer payload) {
     }
 
     /**

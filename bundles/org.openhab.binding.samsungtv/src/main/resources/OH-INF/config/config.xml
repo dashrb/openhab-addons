@@ -24,6 +24,7 @@
 			<default>55000</default>
 		</parameter>
 		<parameter name="macAddress" type="text">
+			<context>mac-address</context>
 			<label>MAC Address</label>
 			<description>MAC Address of the Samsung TV.</description>
 		</parameter>
@@ -59,6 +60,13 @@
 			<label>Key code to send to rotate TV</label>
 			<description>Only works with optional rotating mount</description>
 			<default>KEY_MULTI_VIEW</default>
+			<advanced>true</advanced>
+		</parameter>
+		<parameter name="legacyCipherSuites" type="boolean">
+			<label>Allow Legacy Cipher Suites</label>
+			<description>Allows the cipher suites Jetty excludes, for older TVs. Turn it off to keep those exclusions and drop
+				the warnings. Off requires a TV certificate with the common name SmartViewSDK.</description>
+			<default>true</default>
 			<advanced>true</advanced>
 		</parameter>
 		<parameter name="smartThingsApiKey" type="text" groupName="Cloud Connection">

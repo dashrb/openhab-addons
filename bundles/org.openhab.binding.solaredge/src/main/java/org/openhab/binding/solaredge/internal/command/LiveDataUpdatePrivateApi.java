@@ -24,8 +24,8 @@ import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.http.HttpStatus;
 import org.openhab.binding.solaredge.internal.connector.StatusUpdateListener;
 import org.openhab.binding.solaredge.internal.handler.SolarEdgeHandler;
-import org.openhab.binding.solaredge.internal.model.LiveDataResponse;
-import org.openhab.binding.solaredge.internal.model.LiveDataResponseTransformer;
+import org.openhab.binding.solaredge.internal.model.LiveDataResponsePrivateApi;
+import org.openhab.binding.solaredge.internal.model.LiveDataResponseTransformerPrivateApi;
 
 /**
  * command that retrieves status values for live data channels via private API
@@ -36,13 +36,13 @@ import org.openhab.binding.solaredge.internal.model.LiveDataResponseTransformer;
 public class LiveDataUpdatePrivateApi extends AbstractCommand implements SolarEdgeCommand {
 
     private final SolarEdgeHandler handler;
-    private final LiveDataResponseTransformer transformer;
+    private final LiveDataResponseTransformerPrivateApi transformer;
     private int retries = 0;
 
     public LiveDataUpdatePrivateApi(SolarEdgeHandler handler, StatusUpdateListener listener) {
         super(handler.getConfiguration(), listener);
         this.handler = handler;
-        this.transformer = new LiveDataResponseTransformer(handler);
+        this.transformer = new LiveDataResponseTransformerPrivateApi(handler, config);
     }
 
     @Override
@@ -59,23 +59,25 @@ public class LiveDataUpdatePrivateApi extends AbstractCommand implements SolarEd
     }
 
     @Override
-    public void onComplete(@Nullable Result result) {
-        logger.debug("onComplete()");
+    protected void handleResponse(@Nullable Result result) {
+        logger.debug("[LiveDataUpdatePrivateApi] onComplete()");
+        logger.trace("URL: {}", getURL());
 
         if (!HttpStatus.Code.OK.equals(getCommunicationStatus().getHttpCode())) {
-            updateListenerStatus();
             if (retries++ < MAX_RETRIES) {
                 handler.getWebInterface().enqueueCommand(this);
+                return;
             }
         } else {
             String json = getContentAsString(StandardCharsets.UTF_8);
             if (json != null) {
                 logger.debug("JSON String: {}", json);
-                LiveDataResponse jsonObject = fromJson(json, LiveDataResponse.class);
+                LiveDataResponsePrivateApi jsonObject = fromJson(json, LiveDataResponsePrivateApi.class);
                 if (jsonObject != null) {
                     handler.updateChannelStatus(transformer.transform(jsonObject));
                 }
             }
         }
+        updateListenerStatus();
     }
 }

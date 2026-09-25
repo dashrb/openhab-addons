@@ -18,6 +18,7 @@ import static org.openhab.binding.shelly.internal.api1.Shelly1ApiJsonDTO.*;
 import static org.openhab.binding.shelly.internal.util.ShellyUtils.*;
 import static org.openhab.core.thing.Thing.PROPERTY_MODEL_ID;
 
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -69,14 +70,14 @@ public class ShellyThingCreator {
         if (THING_TYPE_SHELLYPROTECTED_STR.equals(serviceName)) {
             return THING_TYPE_SHELLYPROTECTED;
         }
-        String serviceNameLowerCase = serviceName.toLowerCase();
+        String serviceNameLowerCase = serviceName.toLowerCase(Locale.ROOT);
         String type = substringBefore(serviceNameLowerCase, "-");
         if (type.isEmpty()) {
             throw new IllegalArgumentException("Invalid serviceName format: " + serviceName);
         }
 
         if (serviceNameLowerCase.startsWith(SERVICE_NAME_SHELLYPLUG_PREFIX) && !serviceNameLowerCase.contains("plugus")
-                && !serviceNameLowerCase.contains("plugsg3")) {
+                && !serviceNameLowerCase.contains("plugsg3") && !serviceNameLowerCase.contains("plugmg3")) {
             // shellyplug-s needs to be mapped to shellyplugs to follow the schema
             // for the thing types: <thing type>-<mode>
             if (serviceNameLowerCase.startsWith(SERVICE_NAME_SHELLYPLUGS_PREFIX)
@@ -93,6 +94,10 @@ public class ShellyThingCreator {
         }
 
         if (!deviceType.isEmpty()) {
+            // RGBW2 is mode-sensitive regardless of service name (custom hostnames bypass the check above)
+            if (SHELLYDT_RGBW2.equals(deviceType)) {
+                return SHELLY_MODE_COLOR.equals(mode) ? THING_TYPE_SHELLYRGBW2_COLOR : THING_TYPE_SHELLYRGBW2_WHITE;
+            }
             Map<String, ThingTypeUID> deviceTypeMap = switch (mode) {
                 case SHELLY_MODE_RELAY -> RELAY_THING_TYPE_BY_DEVICE_TYPE;
                 case SHELLY_MODE_ROLLER -> ROLLER_THING_TYPE_BY_DEVICE_TYPE;
@@ -100,6 +105,10 @@ public class ShellyThingCreator {
             };
 
             ThingTypeUID res = deviceTypeMap.get(deviceType);
+            if (res == null && deviceTypeMap != THING_TYPE_BY_DEVICE_TYPE) {
+                // single-mode devices (e.g. SHSW-1, SHSW-PM, SHDM-2) are only listed in the general map
+                res = THING_TYPE_BY_DEVICE_TYPE.get(deviceType);
+            }
             if (res != null) {
                 return res;
             }
@@ -110,7 +119,7 @@ public class ShellyThingCreator {
 
     public static void addBluThing(String gateway, Shelly2NotifyBluEventData data, ShellyThingTable thingTable) {
         String model = getString(data.name);
-        String bluClass = substringBefore(model, "-").toUpperCase();
+        String bluClass = substringBefore(model, "-").toUpperCase(Locale.ROOT);
         String mac = getString(data.addr).replaceAll(":", "");
 
         ThingTypeUID thingTypeUID = THING_TYPE_BY_DEVICE_TYPE.get(model);
@@ -155,7 +164,7 @@ public class ShellyThingCreator {
         if (uid != null) {
             String serviceName = uid.getId();
             if (!serviceName.isEmpty()) {
-                return serviceName + "-" + mac.replaceAll(":", "").toLowerCase();
+                return serviceName + "-" + mac.replaceAll(":", "").toLowerCase(Locale.ROOT);
             }
         }
 

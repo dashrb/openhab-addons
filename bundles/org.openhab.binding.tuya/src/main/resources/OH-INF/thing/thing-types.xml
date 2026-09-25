@@ -58,6 +58,94 @@
 		</config-description>
 	</thing-type>
 
+	<!-- Tuya gateway -->
+	<bridge-type id="tuyaGateway" extensible="color,switch,dimmer,number,string,ir-code">
+		<label>Tuya Gateway</label>
+		<description>A Tuya device that relays for sub-devices, e.g. a Bluetooth or ZigBee gateway.</description>
+
+		<config-description>
+			<parameter name="deviceId" type="text" required="true">
+				<label>Device ID</label>
+			</parameter>
+			<parameter name="localKey" type="text" required="true">
+				<label>Device Local Key</label>
+				<context>password</context>
+			</parameter>
+			<parameter name="productId" type="text" required="true">
+				<label>Product ID</label>
+			</parameter>
+			<parameter name="ip" type="text">
+				<label>IP Address</label>
+				<description>Auto-detected if device is on same subnet or broadcast forwarding configured.</description>
+				<advanced>true</advanced>
+			</parameter>
+			<parameter name="port" type="integer" min="1" max="65535">
+				<label>Port</label>
+				<description>TCP port used by the device. Change only if the device is reachable through a NAT/port mapping.</description>
+				<default>6668</default>
+				<advanced>true</advanced>
+			</parameter>
+			<parameter name="protocol" type="text">
+				<label>Protocol Version</label>
+				<options>
+					<option value="3.1">3.1</option>
+					<option value="3.3">3.3</option>
+					<option value="3.4">3.4</option>
+					<option value="3.5">3.5</option>
+				</options>
+				<limitToOptions>true</limitToOptions>
+				<advanced>true</advanced>
+			</parameter>
+			<parameter name="pollingInterval" type="integer" min="0" unit="s">
+				<label>Polling Interval</label>
+				<default>10</default>
+				<advanced>true</advanced>
+			</parameter>
+			<parameter name="reloadSchema" type="boolean">
+				<label>Reload Schema</label>
+				<description>Retrieves the schema of this device from the Tuya cloud again and replaces the stored schema of its
+					product. Requires an ONLINE project thing. The option resets itself after saving.</description>
+				<default>false</default>
+				<advanced>true</advanced>
+			</parameter>
+		</config-description>
+	</bridge-type>
+
+	<!-- Tuya sub-device -->
+	<thing-type id="tuyaSubDevice" extensible="color,switch,dimmer,number,string,ir-code">
+		<supported-bridge-type-refs>
+			<bridge-type-ref id="tuyaGateway"/>
+		</supported-bridge-type-refs>
+
+		<label>Tuya Sub-Device</label>
+		<description>A Tuya device that is reached through a gateway. Can be extended with channels.</description>
+
+		<config-description>
+			<parameter name="deviceId" type="text" required="true">
+				<label>Device ID</label>
+			</parameter>
+			<parameter name="productId" type="text" required="true">
+				<label>Product ID</label>
+			</parameter>
+			<parameter name="subDeviceId" type="text" required="true">
+				<label>Sub-Device ID</label>
+				<description>Node ID identifying the device towards its gateway.</description>
+			</parameter>
+			<parameter name="pollingInterval" type="integer" min="0" unit="s">
+				<label>Polling Interval</label>
+				<default>10</default>
+				<advanced>true</advanced>
+			</parameter>
+			<parameter name="reloadSchema" type="boolean">
+				<label>Reload Schema</label>
+				<description>Retrieves the schema of this device from the Tuya cloud again and replaces the stored schema of its
+					product. Requires an ONLINE project thing. The option resets itself after saving.</description>
+				<default>false</default>
+				<advanced>true</advanced>
+			</parameter>
+		</config-description>
+	</thing-type>
+
 	<!-- Generic Tuya device -->
 	<thing-type id="tuyaDevice" extensible="color,switch,dimmer,number,string,ir-code">
 		<label>Generic Tuya Device</label>
@@ -79,6 +167,12 @@
 				<description>Auto-detected if device is on same subnet or broadcast forwarding configured.</description>
 				<advanced>true</advanced>
 			</parameter>
+			<parameter name="port" type="integer" min="1" max="65535">
+				<label>Port</label>
+				<description>TCP port used by the device. Change only if the device is reachable through a NAT/port mapping.</description>
+				<default>6668</default>
+				<advanced>true</advanced>
+			</parameter>
 			<parameter name="protocol" type="text">
 				<label>Protocol Version</label>
 				<options>
@@ -93,6 +187,13 @@
 			<parameter name="pollingInterval" type="integer" min="0" unit="s">
 				<label>Polling Interval</label>
 				<default>10</default>
+				<advanced>true</advanced>
+			</parameter>
+			<parameter name="reloadSchema" type="boolean">
+				<label>Reload Schema</label>
+				<description>Retrieves the schema of this device from the Tuya cloud again and replaces the stored schema of its
+					product. Requires an ONLINE project thing. The option resets itself after saving.</description>
+				<default>false</default>
 				<advanced>true</advanced>
 			</parameter>
 		</config-description>
@@ -171,7 +272,7 @@
 	<channel-type id="ir-code">
 		<item-type>String</item-type>
 		<label>IR Code</label>
-		<description>Supported codes: tuya base64 codes diy mode, nec-format codes, samsung-format codes</description>
+		<description>Supported codes: Tuya DIY base64 codes, NEC-format codes, Samsung-format codes.</description>
 
 		<config-description>
 			<parameter name="irType" type="text" required="true">
@@ -186,8 +287,8 @@
 			</parameter>
 			<parameter name="activeListen" type="boolean" required="false">
 				<label>Active Listening</label>
-				<description>Device will be always in learning mode. After send command with key code device stays in the learning
-					mode</description>
+				<description>Device will always be in learning mode. After sending a command with a key code, the device stays in
+					learning mode.</description>
 			</parameter>
 			<parameter name="irCode" type="text" required="false">
 				<label>IR Code</label>
@@ -208,7 +309,7 @@
 			</parameter>
 			<parameter name="dp" type="integer" required="false">
 				<label>DP Study Key</label>
-				<description>DP number for study key. Uses for receive key code in learning mode</description>
+				<description>DP number for the study key. Used to receive key codes in learning mode.</description>
 				<default>2</default>
 				<advanced>true</advanced>
 			</parameter>

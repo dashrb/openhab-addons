@@ -37,13 +37,7 @@ import org.openhab.core.types.UnDefType;
 @ExtendWith(MockitoExtension.class)
 public class DeviceUtilTest extends JavaTest {
 
-    private @NonNullByDefault({}) @Mock MieleTranslationProvider translationProvider;
-
-    @Test
-    public void bytesToHexWhenTopBitIsUsedReturnsCorrectString() {
-        String actual = DeviceUtil.bytesToHex(new byte[] { (byte) 0xde, (byte) 0xad, (byte) 0xbe, (byte) 0xef });
-        assertEquals("DEADBEEF", actual);
-    }
+    private @Mock @NonNullByDefault({}) MieleTranslationProvider translationProvider;
 
     /**
      * This test guards that the UTF-16 returned by the RPC-JSON API will be
