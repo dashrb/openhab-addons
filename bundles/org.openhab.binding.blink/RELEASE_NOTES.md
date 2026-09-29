@@ -51,4 +51,5 @@
 
 1. fix memory leak when setThumbnail is used often (the new thumbnails were cached forever) -- Thanks to Lutz_Kittel for the bug report and analysis!
 1. Blink Account login is now more resilient: during all stages of login, treat any 2xx http result codes as success, instead of expecting exactly 200 or 201
+1. add cosmetic support for Sync Module XR+ (monte): Network Sync Module Properties now shows XR+ rather than XR? for these devices
 
