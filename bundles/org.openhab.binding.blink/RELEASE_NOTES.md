@@ -45,3 +45,10 @@
 1. Added initial support for Sync Module info as part of the Network Thing, including wifi strength advanced channel
 1. Fix bug where Camera thing's "Power Source" did not properly reflect use of Batteries
 1. Updated README.md with more user documentation
+
+
+## Changes in 5.3.0.202609290247
+
+1. fix memory leak when setThumbnail is used often (the new thumbnails were cached forever) -- Thanks to Lutz_Kittel for the bug report and analysis!
+1. Blink Account login is now more resilient: during all stages of login, treat any 2xx http result codes as success, instead of expecting exactly 200 or 201
+
