@@ -164,7 +164,7 @@ public class MediaManager {
      * When the caller has a path, this method will return the image, either from cache, or freshly
      * fetched from the Blink APIs. Static "homepage" thumbnails don't correspond to motion events
      * so they typically have to be fetched.
-     * 
+     *
      * @param imagePath the URI of the image
      * @return the raw bytes of the image
      * @throws IOException
@@ -272,7 +272,7 @@ public class MediaManager {
      * Used internally, and by the MediaServlet to show the user how much memory is being used
      * by the media cache. The user can clear the cache on demand, but there's also a background
      * job to periodically uncache some things to get back under the max configured cache size.
-     * 
+     *
      * @return a DTO of the cache statistics
      */
     public CacheStats getCacheStats() {
@@ -355,13 +355,15 @@ public class MediaManager {
         CacheStats cache = getCacheStats();
         long currentCacheSize = cache.image_size_bytes + cache.video_size_bytes;
         if (currentCacheSize > maxCacheSizeBytes) {
-            logger.info(String.format("Cache stats: %.1f MB, out of %.1f MB allowed. Decaching now...",
+            logger.info(String.format("Cache stats (before): %.1f MB, out of %.1f MB allowed. Decaching now...",
                     currentCacheSize / 1024.0 / 1024, maxCacheSizeBytes / 1024.0 / 1024));
             long targetBytes = currentCacheSize - (maxCacheSizeBytes * 3 / 5); // aim for 60% full
             long progressBytes = 0;
             Iterator<Long> thumbIt = thumbnailImageByMediaId.keySet().iterator();
+            Iterator<String> staticThumbIt = staticThumbnailByUri.keySet().iterator();
             Iterator<Long> videoIt = videoByMediaId.keySet().iterator();
             int countThumbs = 0;
+            int countStaticThumbs = 0;
             int countVideos = 0;
             while (progressBytes < targetBytes && (thumbIt.hasNext() || videoIt.hasNext())) {
                 if (thumbIt.hasNext()) {
@@ -370,6 +372,14 @@ public class MediaManager {
                         progressBytes += target.length;
                         thumbIt.remove();
                         countThumbs++;
+                    }
+                }
+                if (staticThumbIt.hasNext()) {
+                    byte[] target = staticThumbnailByUri.get(staticThumbIt.next());
+                    if (target != null) {
+                        progressBytes += target.length;
+                        staticThumbIt.remove();
+                        countStaticThumbs++;
                     }
                 }
                 if (videoIt.hasNext()) {
@@ -381,11 +391,13 @@ public class MediaManager {
                     }
                 }
             }
-            logger.debug(String.format("cacheCheck: cleared cache of %.1f MB of data, from %d images and %d videos,",
-                    progressBytes / 1024.0 / 1024, countThumbs, countVideos));
+            logger.info(String.format(
+                    "cacheCheck: cleared cache of %.1f MB of data, from %d images, %d thumbnails, and %d videos",
+                    progressBytes / 1024.0 / 1024, countThumbs, countStaticThumbs, countVideos));
             cache = getCacheStats();
-            logger.info(String.format("Cache stats: %.1f MB, out of %.1f MB allowed.", currentCacheSize / 1024.0 / 1024,
-                    maxCacheSizeBytes / 1024.0 / 1024));
+            currentCacheSize = cache.image_size_bytes + cache.video_size_bytes;
+            logger.info(String.format("Cache stats (after): %.1f MB, out of %.1f MB allowed.",
+                    currentCacheSize / 1024.0 / 1024, maxCacheSizeBytes / 1024.0 / 1024));
         }
         cacheCheckJob = scheduler.schedule(() -> cacheCheck(), cacheCheckRateMins, TimeUnit.MINUTES);
     }
